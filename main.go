@@ -9,6 +9,27 @@ import (
     "time"
 )
 
+type ResponseType struct {
+	Data struct {
+		Bids []BidType `json:"bids"`
+	} `json:"data"`
+}
+
+type BidType struct {
+	Id string `json:"id"`
+	BidderAddress string `json:"bidderAddress"`
+  PubKeyIndex string `json:"pubKeyIndex"`
+  Validator ValidatorType `json:"validator"`
+}
+
+type ValidatorType struct {
+	Id string `json:"id"`
+	Phase string `json:"phase"`
+  IpfsHashForEncryptedValidatorKey string `json:"ipfsHashForEncryptedValidatorKey"`
+  ValidatorPubKey string `json:"validatorPubKey"`        	
+}
+
+
 func main() {
 
 	// TODO: fetch GRAPH_URL from env
@@ -16,6 +37,16 @@ func main() {
 
 	// TODO: fetch BIDDER from env
 	BIDDER := "0xF88866238ecE28A41e050b04360423a5d1181d49"
+
+	bids := retrieveBidsFromSubgraph(GRAPH_URL, BIDDER)
+
+	fmt.Println(PrettyPrint(bids))
+
+}
+
+
+// This function fetch bids from the Graph
+func retrieveBidsFromSubgraph (GRAPH_URL string, BIDDER string) []BidType {
 
 	// the query to fetch bids
 	queryJsonData := map[string]string{
@@ -44,9 +75,23 @@ func main() {
 	defer response.Body.Close()
 	if err != nil {
 		fmt.Printf("The HTTP request failed with error %s\n", err)
+		// TODO: return []
 	}
 
 	data, _ := ioutil.ReadAll(response.Body)
 
-	fmt.Println(string(data))
+	var result ResponseType
+	if err := json.Unmarshal(data, &result); err != nil {   // Parse []byte to go struct pointer
+    fmt.Println("Can not unmarshal JSON")
+		// TODO: return []
+	}
+	
+	return result.Data.Bids
+
+}
+
+// PrettyPrint to print struct in a readable way
+func PrettyPrint(i interface{}) string {
+	s, _ := json.MarshalIndent(i, "", "\t")
+	return string(s)
 }
