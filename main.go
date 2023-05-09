@@ -9,6 +9,12 @@ import (
     "time"
 )
 
+
+// ********************************
+// ******* GRAPH TYPES ************
+// ********************************
+
+
 type ResponseType struct {
 	Data struct {
 		Bids []BidType `json:"bids"`
@@ -30,17 +36,65 @@ type ValidatorType struct {
 }
 
 
+// ******************************
+// ********** TYPES *************
+// ******************************
+
+
+type Config struct {
+	GRAPH_URL string `json"GRAPH_URL"`
+	BIDDER string `json"BIDDER"`
+  PRIVATE_KEYS_FILE_LOCATION string `json"PRIVATE_KEYS_FILE_LOCATION"`
+  OUTPUT_LOCATION string `json"OUTPUT_LOCATION"`
+  PASSWORD string `json"PASSWORD"`
+}
+
 func main() {
 
-	// TODO: fetch GRAPH_URL from env
-	GRAPH_URL := "https://api.studio.thegraph.com/query/41778/goerli-dressrehearsal-1/0.0.6"
+	// STEP 1: fetch env variables from json/.env file
+	// NOTE: I'm using json now, but easy to switch
+	config, err := getConfig()
+	if err != nil {
+		fmt.Println("Failed to load config")
+		return
+	}
+	fmt.Println(PrettyPrint(config))
 
-	// TODO: fetch BIDDER from env
-	BIDDER := "0xF88866238ecE28A41e050b04360423a5d1181d49"
+	// TODO: STEP 2: extract private keys from file
+	
 
-	bids := retrieveBidsFromSubgraph(GRAPH_URL, BIDDER)
-
+	// STEP 3: fetch bids from subgraph
+	bids := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
 	fmt.Println(PrettyPrint(bids))
+
+	// TODO: STEP 4: a loop to process each bid 
+
+
+}
+
+
+func getConfig () (Config, error) {
+
+	// will read from config.json file which exists in the same directory
+
+	// TODO: Check if the file exists
+
+	// read the file
+	content, err := ioutil.ReadFile("./config.json")
+	if err != nil {
+		fmt.Println("Error when opening file: ", err)
+		return Config{}, err
+	}
+
+	// parse the config data from the json
+	var data Config
+	err = json.Unmarshal(content, &data)
+	if err != nil {
+		fmt.Println("config.json has invalid form", err)
+		return Config{}, err
+	}
+
+	return data, nil
 
 }
 
