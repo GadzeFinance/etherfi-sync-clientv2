@@ -46,6 +46,11 @@ type ValidatorType struct {
 }
 
 type DecryptedDataJSON struct {
-	PublicKeys []string `json:"public_keys"`
-	PrivateKeys []string `json:"private_keys"`
+	PublicKeys []string `json:"pubKeyArray"`
+	PrivateKeys []string `json:"privKeyArray"`
+}
+
+type KeyPair struct {
+	PublicKey string `json:"publicKey"`
+	PrivateKey string `json:"privateKey"`
 }
