@@ -11,11 +11,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
+	"strconv"
+	//"os"
 	"time"
 
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
-	"github.com/robfig/cron"
+	//"github.com/robfig/cron"
 	"golang.org/x/crypto/pbkdf2"
 )
 
@@ -28,114 +29,94 @@ func main() {
 		fmt.Println("Failed to load config")
 		return
 	}
-	fmt.Println(PrettyPrint(config))
+	//fmt.Println(PrettyPrint(config))
 
-	c := cron.New()
-	c.AddFunc("*/1 * * * *", func() {
+	// c := cron.New()
+	// c.AddFunc("*/1 * * * *", func() {
 
-		if err := cronjob(config); err != nil {
-			fmt.Printf("Error executing function: %s\n", err)
-			os.Exit(1)
-		}
-	})
+	// 	if err := cronjob(config); err != nil {
+	// 		fmt.Printf("Error executing function: %s\n", err)
+	// 		os.Exit(1)
+	// 	}
+	// })
 
-	c.Start()
+	// c.Start()
 
-	for {
-		time.Sleep(time.Second)
-	}
+	// for {
+	// 	time.Sleep(time.Second)
+	// }
+
+	cronjob(config)
 }
 
 func cronjob(config schemas.Config) error {
+
+	privateKey, err := extractPrivateKeysFromFS(config.PRIVATE_KEYS_FILE_LOCATION)
+	if err != nil {
+		return err
+	}
 
 	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return err
 	}
-	for _, bid := range bids {
+
+	for i, bid := range bids {
+
+		if i >= 1 {
+			break
+		}
+
+		fmt.Println(`> start processing bid with id:` + bid.Id)
 
 		validator := bid.Validator
 		ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
+		
 		IPFSResponse, err := fetchFromIPFS(config.IPFS_GATEWAY, ipfsHashForEncryptedValidatorKey)
-		if err != nil {
-			return err
-		}
-
-		privateKey, err := extractPrivateKeysFromFS(config.PRIVATE_KEYS_FILE_LOCATION)
 		if err != nil {
 			return err
 		}
 
 		fmt.Println(PrettyPrint(IPFSResponse))
 		fmt.Println(bid.Id)
+		
 		validatorKey, err := decryptPrivateKeys(privateKey, config.PASSWORD)
-		fmt.Println(PrettyPrint(validatorKey))
+		if err != nil {
+			return err
+		}
+		
+		//fmt.Println(PrettyPrint(validatorKey))
+		
+		pubKeyArray := validatorKey.PublicKeys
+		privKeyArray := validatorKey.PrivateKeys
+
+		keypairForIndex, err := getKeyPairByPubKeyIndex(bid.PubKeyIndex, pubKeyArray, privKeyArray)
+
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(PrettyPrint(keypairForIndex))
 
 	}
 
 	return nil
 }
 
-func decryptKeyPairJSON(privateKeysJson schemas.KeyStoreFile, password string) () {
 
-	// from hex string to byte array
-	iv, err := hex.DecodeString(privateKeysJson.iv)
-	if err != nil {
-		log.Fatal("cannot decode iv: ", err)
-		return err
-	}
-	salt, err := hex.DecodeString(privateKeysJson.Salt)
-	if err != nil {
-		log.Fatal("cannot decode salt: ", err)
-		return err
-	}
-
-	key := pbkdf2.Key([]byte(password), salt, 100000, 32, sha256.New)
-
-
-	// TODO: need to implement following
-  // const encryptedData = Buffer.from(privateKeysJSON.data, "hex");
-
-  // const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
-  // const decryptedData = Buffer.concat([
-  //   decipher.update(encryptedData),
-  //   decipher.final(),
-  // ]);
-  // let decryptedDataJSON = JSON.parse(decryptedData.toString("utf8"));
-  // return decryptedDataJSON;
-}
-
-
-// This function comes from https://gist.github.com/brettscott/2ac58ab7cb1c66e2b4a32d6c1c3908a7#file-aes-256-cbc-go-L64
-// Still trying to understand aes-256-cbc decipher
-func Decrypt(encrypted string) (string, error) {
-	key := []byte(CIPHER_KEY)
-	cipherText, _ := hex.DecodeString(encrypted)
-
-	block, err := aes.NewCipher(key)
+func getKeyPairByPubKeyIndex(pubkeyIndexString string, privateKeys []string, publicKeys []string) (schemas.KeyPair, error) {
+	//fmt.Println("index:", pubkeyIndexString)
+	index, err := strconv.ParseInt(pubkeyIndexString, 10, 0)
 	if err != nil {
 		panic(err)
+		return schemas.KeyPair{}, err
 	}
-
-	if len(cipherText) < aes.BlockSize {
-		panic("cipherText too short")
-	}
-	iv := cipherText[:aes.BlockSize]
-	cipherText = cipherText[aes.BlockSize:]
-	if len(cipherText)%aes.BlockSize != 0 {
-		panic("cipherText is not a multiple of the block size")
-	}
-
-	mode := cipher.NewCBCDecrypter(block, iv)
-	mode.CryptBlocks(cipherText, cipherText)
-
-	cipherText, _ = pkcs7.Unpad(cipherText, aes.BlockSize)
-	return fmt.Sprintf("%s", cipherText), nil
+	return schemas.KeyPair {
+		PrivateKey: privateKeys[index],
+		PublicKey: publicKeys[index],
+	}, nil
 }
-
-
-
 
 
 func extractPrivateKeysFromFS(location string) (schemas.KeyStoreFile, error) {
@@ -155,41 +136,50 @@ func extractPrivateKeysFromFS(location string) (schemas.KeyStoreFile, error) {
 	return payload, nil
 }
 
-func decryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string) (*schemas.DecryptedDataJSON, error) {
+
+func decryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string) (schemas.DecryptedDataJSON, error) {
 	iv, err := hex.DecodeString(privateKeys.Iv)
 	if err != nil {
-		return nil, err
+		panic(err)
+		return schemas.DecryptedDataJSON{}, err
 	}
 	salt, err := hex.DecodeString(privateKeys.Salt)
 	if err != nil {
-		return nil, err
+		panic(err)
+		return schemas.DecryptedDataJSON{}, err
 	}
-	encryptedData, err := hex.DecodeString(privateKeys.Data)
+	ciphertext, err := hex.DecodeString(privateKeys.Data)
 	if err != nil {
-		return nil, err
+		panic(err)
+		return schemas.DecryptedDataJSON{}, err
 	}
 
 	// TODO: we need to figure out how the last big of the cryptography works 
 	key := pbkdf2.Key([]byte(privKeyPassword), salt, 100000, 32, sha256.New)
+
 	block, err := aes.NewCipher(key)
+
 	if err != nil {
-		return nil, err
+		panic(err)
+		return schemas.DecryptedDataJSON{}, err
 	}
 
-	decryptedData := make([]byte, len(encryptedData))
-	stream := cipher.NewCTR(block, iv)
-	stream.XORKeyStream(decryptedData, encryptedData)
+	mode := cipher.NewCBCDecrypter(block, iv)
+	mode.CryptBlocks(ciphertext, ciphertext)
+	// TODO: didn't handle error from PKCS5UnPadding for now, maybe use same function from some packages
+	decryptedData := PKCS5UnPadding(ciphertext)
 
 	var decryptedDataJSON schemas.DecryptedDataJSON
 	err = json.Unmarshal(decryptedData, &decryptedDataJSON)
 	if err != nil {
-		fmt.Println(err)
-		fmt.Println(decryptedDataJSON)
-		return nil, err
+		panic(err)
+		panic(decryptedDataJSON)
+		return schemas.DecryptedDataJSON{}, err
 	}
 
-	fmt.Println(decryptedDataJSON)
-	return &decryptedDataJSON, nil
+	// fmt.Println(PrettyPrint(decryptedDataJSON))
+	
+	return decryptedDataJSON, nil
 
 }
 

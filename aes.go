@@ -6,37 +6,37 @@ import (
 	"crypto/cipher"
 	"encoding/hex"
 	"fmt"
-	"bytes"
+	//"bytes"
 )
 
-func Decrypt(encrypted_string string, ENCRYPTION_KEY string) (string, error) {
+func Decrypt(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) {
 	
 	key := []byte(ENCRYPTION_KEY)
 	parts := strings.Split(encrypted_string, ":")
 
 	// the encrypted string should has the from [iv]:[ciphertext]
 	if len(parts) != 2 {
-		return "", fmt.Errorf("ciphertext is not a multiple of 16")
+		return nil, fmt.Errorf("ciphertext is not a multiple of 16")
 	}
 
 	iv, err := hex.DecodeString(parts[0])
-	if err {
-		return "", fmt.Errorf("failed to decode iv:", err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode iv:", err)
 	}
 
 	ciphertext, _ := hex.DecodeString(parts[1])
-	if err {
-		return "", fmt.Errorf("failed to decode ciphertext:", err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode ciphertext:", err)
 	}
 
 	block, err := aes.NewCipher(key)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if len(ciphertext) % aes.BlockSize != 0 {
-		return "", fmt.Errorf("ciphertext is not a multiple of 16")
+		return nil, fmt.Errorf("ciphertext is not a multiple of 16")
 	}
 
 	mode := cipher.NewCBCDecrypter(block, iv)
@@ -44,7 +44,7 @@ func Decrypt(encrypted_string string, ENCRYPTION_KEY string) (string, error) {
 	ciphertext = PKCS5UnPadding(ciphertext)
 	mode.CryptBlocks(ciphertext, ciphertext)
 	
-	return hex.EncodeToString(ciphertext), nil
+	return ciphertext, nil
 
 }
 
