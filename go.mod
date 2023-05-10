@@ -2,4 +2,7 @@ module github.com/GadzeFinance/etherfi-sync-clientv2
 
 go 1.20
 
-require github.com/robfig/cron v1.2.0
+require (
+	github.com/robfig/cron v1.2.0
+	golang.org/x/crypto v0.9.0
+)

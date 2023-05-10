@@ -1,24 +1,23 @@
 package main
 
 import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "io/ioutil"
-    "net/http"
-    "time"
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
-	"github.com/robfig/cron"
-)
+	"time"
 
-type Config struct {
-	GRAPH_URL string `json:"GRAPH_URL"`
-	BIDDER string `json:"BIDDER"`
-	PRIVATE_KEYS_FILE_LOCATION string `json:"PRIVATE_KEYS_FILE_LOCATION"`
-	OUTPUT_LOCATION string `json:"OUTPUT_LOCATION"`
-	PASSWORD string `json:"PASSWORD"`
-	IPFS_GATEWAY string `json:"IPFS_GATEWAY"`
-}
+	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
+	"github.com/robfig/cron"
+	"golang.org/x/crypto/pbkdf2"
+)
 
 func main() {
 
@@ -32,9 +31,9 @@ func main() {
 	fmt.Println(PrettyPrint(config))
 
 	c := cron.New()
-	c.AddFunc("0 * * * *", func() { 
+	c.AddFunc("*/1 * * * *", func() {
 
-		if err := cronjob(config) ; err != nil {
+		if err := cronjob(config); err != nil {
 			fmt.Printf("Error executing function: %s\n", err)
 			os.Exit(1)
 		}
@@ -47,31 +46,93 @@ func main() {
 	}
 }
 
-func cronjob(config Config) error {
+func cronjob(config schemas.Config) error {
 
 	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
 	if err != nil {
-		fmt.Println("Error: ", err);
+		fmt.Println("Error: ", err)
 		return err
 	}
-	fmt.Println("Hello")
 	for _, bid := range bids {
-		fmt.Println(bid)
-		// validator, pubKeyIndex := bid.Validator, bid.PubKeyIndex
-		response, err := fetchFromIPFS(config.IPFS_GATEWAY, bid.Validator.IpfsHashForEncryptedValidatorKey)
+
+		validator := bid.Validator
+		ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
+		IPFSResponse, err := fetchFromIPFS(config.IPFS_GATEWAY, ipfsHashForEncryptedValidatorKey)
 		if err != nil {
-			fmt.Println("ERROR")
 			return err
 		}
-		fmt.Println(PrettyPrint(*response))
 
-	}	
+		privateKey, err := extractPrivateKeysFromFS(config.PRIVATE_KEYS_FILE_LOCATION)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(PrettyPrint(IPFSResponse))
+		fmt.Println(bid.Id)
+		validatorKey, err := decryptPrivateKeys(privateKey, config.PASSWORD)
+		fmt.Println(PrettyPrint(validatorKey))
+
+	}
 
 	return nil
 }
 
+func extractPrivateKeysFromFS(location string) (schemas.KeyStoreFile, error) {
+	content, err := ioutil.ReadFile(location)
+	if err != nil {
+		log.Fatal("Error when opening file: ", err)
+		return schemas.KeyStoreFile{}, err
+	}
 
-func getConfig () (Config, error) {
+	var payload schemas.KeyStoreFile
+	err = json.Unmarshal(content, &payload)
+	if err != nil {
+		log.Fatal("keystore file has invalid form: ", err)
+		return schemas.KeyStoreFile{}, err
+	}
+
+	return payload, nil
+}
+
+func decryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string) (*schemas.DecryptedDataJSON, error) {
+	iv, err := hex.DecodeString(privateKeys.Iv)
+	if err != nil {
+		return nil, err
+	}
+	salt, err := hex.DecodeString(privateKeys.Salt)
+	if err != nil {
+		return nil, err
+	}
+	encryptedData, err := hex.DecodeString(privateKeys.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: we need to figure out how the last big of the cryptography works 
+	key := pbkdf2.Key([]byte(privKeyPassword), salt, 100000, 32, sha256.New)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	decryptedData := make([]byte, len(encryptedData))
+	stream := cipher.NewCTR(block, iv)
+	stream.XORKeyStream(decryptedData, encryptedData)
+
+	var decryptedDataJSON schemas.DecryptedDataJSON
+	err = json.Unmarshal(decryptedData, &decryptedDataJSON)
+	if err != nil {
+		fmt.Println(err)
+		fmt.Println(decryptedDataJSON)
+		return nil, err
+	}
+
+	fmt.Println(decryptedDataJSON)
+	return &decryptedDataJSON, nil
+
+}
+
+func getConfig() (schemas.Config, error) {
 
 	// will read from config.json file which exists in the same directory
 
@@ -81,28 +142,27 @@ func getConfig () (Config, error) {
 	content, err := ioutil.ReadFile("./config.json")
 	if err != nil {
 		fmt.Println("Error when opening file: ", err)
-		return Config{}, err
+		return schemas.Config{}, err
 	}
 
 	// parse the config data from the json
-	var data Config
+	var data schemas.Config
 	err = json.Unmarshal(content, &data)
 	if err != nil {
 		fmt.Println("config.json has invalid form", err)
-		return Config{}, err
+		return schemas.Config{}, err
 	}
 
 	return data, nil
 
 }
 
-
 // This function fetch bids from the Graph
-func retrieveBidsFromSubgraph (GRAPH_URL string, BIDDER string) ([]BidType, error) {
+func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string) ([]schemas.BidType, error) {
 
 	// the query to fetch bids
 	queryJsonData := map[string]string{
-    "query": `
+		"query": `
 		  {
       	bids(where: { bidderAddress: "` + BIDDER + `", status: "WON", validator_not: null, validator_: { phase: VALIDATOR_REGISTERED} }) {
         	id
@@ -116,7 +176,7 @@ func retrieveBidsFromSubgraph (GRAPH_URL string, BIDDER string) ([]BidType, erro
         	}
       	}
     	}`,
-  }
+	}
 	jsonValue, _ := json.Marshal(queryJsonData)
 
 	request, err := http.NewRequest("POST", GRAPH_URL, bytes.NewBuffer(jsonValue))
@@ -126,7 +186,7 @@ func retrieveBidsFromSubgraph (GRAPH_URL string, BIDDER string) ([]BidType, erro
 		return nil, err
 	}
 	request.Header.Set("Content-Type", "application/json")
-	
+
 	client := &http.Client{Timeout: time.Second * 10}
 	response, err := client.Do(request)
 	if err != nil {
@@ -138,16 +198,16 @@ func retrieveBidsFromSubgraph (GRAPH_URL string, BIDDER string) ([]BidType, erro
 
 	data, _ := ioutil.ReadAll(response.Body)
 
-	var result GQLResponseType
-	if err := json.Unmarshal(data, &result); err != nil {   // Parse []byte to go struct pointer
-    	fmt.Println("Can not unmarshal JSON")
+	var result schemas.GQLResponseType
+	if err := json.Unmarshal(data, &result); err != nil { // Parse []byte to go struct pointer
+		fmt.Println("Can not unmarshal JSON")
 		return nil, err
 	}
-	
+
 	return result.Data.Bids, nil
 }
 
-func fetchFromIPFS (gatewayURL string, cid string) (*IPFSResponseType, error) {
+func fetchFromIPFS(gatewayURL string, cid string) (*schemas.IPFSResponseType, error) {
 
 	reqURL := gatewayURL + "/" + cid
 	request, err := http.NewRequest("GET", reqURL, nil)
@@ -170,9 +230,9 @@ func fetchFromIPFS (gatewayURL string, cid string) (*IPFSResponseType, error) {
 		return nil, err
 	}
 
-	var ipfsResponse IPFSResponseType
-	if err := json.Unmarshal(body, &ipfsResponse); err != nil {   // Parse []byte to go struct pointer
-    	fmt.Println("Can not unmarshal JSON")
+	var ipfsResponse schemas.IPFSResponseType
+	if err := json.Unmarshal(body, &ipfsResponse); err != nil { // Parse []byte to go struct pointer
+		fmt.Println("Can not unmarshal JSON")
 		return nil, err
 	}
 
