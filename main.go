@@ -60,6 +60,13 @@ type Config struct {
 	IPFS_GATEWAY string `json:"IPFS_GATEWAY"`
 }
 
+type KeyStoreFile struct {
+	Iv string `json:"iv"`
+	Salt string `json:"salt"`
+	Data string `json:"data"`
+	EtherfiDesktopAppVersion string `json:"etherfiDesktopAppVersion"`
+}
+
 func main() {
 
 	// STEP 1: fetch env variables from json/.env file
@@ -71,8 +78,14 @@ func main() {
 	}
 	fmt.Println(PrettyPrint(config))
 
-	// TODO: STEP 2: extract private keys from file
+	// STEP 2: extract private keys from file
+	privateKeys, err := extractPrivateKeysFromFS(config.PRIVATE_KEYS_FILE_LOCATION)
+	if err != nil {
+		fmt.Println("Error: ", err);
+		return
+	}
 
+	// fmt.Println(PrettyPrint(privateKeys))
 
 	// STEP 3: fetch bids from subgraph
 	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
@@ -85,56 +98,38 @@ func main() {
 
 	// TODO: STEP 4: a loop to process each bid 
 
-	}	
+	for _, bid := range bids {
+		fmt.Println("> start processing bid with id: " + string(bid.Id))
+
+		validator := bid.Validator
+		pubKeyIndex := bid.PubKeyIndex
+		ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
+		validatorPubKey := validator.ValidatorPubKey
+		
+		IPFSResponse := fetchFromIPFS(ipfsHashForEncryptedValidatorKey)
+
+
 
 	}
 
+}
 
-  for (const bid of bids) {
-    console.log(`> start processing bid with id:${bid.id}`)
-    const { validator, pubKeyIndex } = bid
-    const { ipfsHashForEncryptedValidatorKey, validatorPubKey } = validator
-    const file = await fetchFromIpfs(ipfsHashForEncryptedValidatorKey)
-    const validatorKey = decryptKeyPairJSON(privateKeys, PASSWORD)
-    const { pubKeyArray, privKeyArray } = validatorKey
-    const keypairForIndex = getKeyPairByPubKeyIndex(pubKeyIndex, privKeyArray, pubKeyArray)
-    const data = decryptValidatorKeyInfo(file, keypairForIndex)
-    console.log(`creating ${data.keystoreName} for bid:${bid.id}`)
-    createFSBidOutput(OUTPUT_LOCATION, data, bid.id, validatorPubKey)
-    console.log(`< end processing bid with id:${bid.id}`)
+func extractPrivateKeysFromFS(location string) (KeyStoreFile, error) {
+	content, err := ioutil.ReadFile(location)
+  if err != nil {
+    log.Fatal("Error when opening file: ", err)
+		return KeyStoreFile{}, err
   }
-
-}
-
-func fetchFromIpfs (cid string, IPFS_GATEWAY string) {
-	url := IPFS_GATEWAY + "/" + cid
-	client := http.Client{
-		Timeout: time.Second * 10,
-	}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		log.Fatal(err)
+  
+	var payload KeyStoreFile
+  err = json.Unmarshal(content, &payload)
+  if err != nil {
+    log.Fatal("keystore file has invalid form: ", err)
+		return KeyStoreFile{}, err
 	}
 
-	req.Header.Set("User-Agent", "spacecount-tutorial")
-
-	res, getErr := spaceClient.Do(req)
-	if getErr != nil {
-		log.Fatal(getErr)
-	}
-}
-
-export const fetchFromIpfs = async (cid) => {
-	const config = getConfig()
-	const url = `${config.IPFS_GATEWAY}/${cid}`
-	try {
-			const resp = await fetch(url)
-			const respJSON = await resp.json()
-			return respJSON
-	} catch (error) {
-			console.error(error)
-			return undefined
-	}
+	return payload, nil
+ 
 }
 
 
