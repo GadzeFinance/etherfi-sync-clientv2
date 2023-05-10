@@ -7,6 +7,7 @@ import (
     "io/ioutil"
     "net/http"
     "time"
+		"log"
 )
 
 
@@ -47,6 +48,7 @@ type Config struct {
   PRIVATE_KEYS_FILE_LOCATION string `json"PRIVATE_KEYS_FILE_LOCATION"`
   OUTPUT_LOCATION string `json"OUTPUT_LOCATION"`
   PASSWORD string `json"PASSWORD"`
+	IPFS_GATEWAY string `json"IPFS_GATEWAY"`
 }
 
 func main() {
@@ -61,15 +63,70 @@ func main() {
 	fmt.Println(PrettyPrint(config))
 
 	// TODO: STEP 2: extract private keys from file
-	
+
 
 	// STEP 3: fetch bids from subgraph
 	bids := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
 	fmt.Println(PrettyPrint(bids))
 
 	// TODO: STEP 4: a loop to process each bid 
+	for _, bid := range bids {
+		fmt.Println("> start processing bid with id: " + string(bid.Id))
+		
+		validator := bid.Validator
+		pubKeyIndex := bid.PubKeyIndex
+		ipfsHashForEncryptedValidatorKey = bid.IpfsHashForEncryptedValidatorKey
+		validatorPubKey = bid.ValidatorPubKey
 
 
+	}
+
+
+  for (const bid of bids) {
+    console.log(`> start processing bid with id:${bid.id}`)
+    const { validator, pubKeyIndex } = bid
+    const { ipfsHashForEncryptedValidatorKey, validatorPubKey } = validator
+    const file = await fetchFromIpfs(ipfsHashForEncryptedValidatorKey)
+    const validatorKey = decryptKeyPairJSON(privateKeys, PASSWORD)
+    const { pubKeyArray, privKeyArray } = validatorKey
+    const keypairForIndex = getKeyPairByPubKeyIndex(pubKeyIndex, privKeyArray, pubKeyArray)
+    const data = decryptValidatorKeyInfo(file, keypairForIndex)
+    console.log(`creating ${data.keystoreName} for bid:${bid.id}`)
+    createFSBidOutput(OUTPUT_LOCATION, data, bid.id, validatorPubKey)
+    console.log(`< end processing bid with id:${bid.id}`)
+  }
+
+}
+
+func fetchFromIpfs (cid string, IPFS_GATEWAY string) {
+	url := IPFS_GATEWAY + "/" + cid
+	client := http.Client{
+		Timeout: time.Second * 10,
+	}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req.Header.Set("User-Agent", "spacecount-tutorial")
+
+	res, getErr := spaceClient.Do(req)
+	if getErr != nil {
+		log.Fatal(getErr)
+	}
+}
+
+export const fetchFromIpfs = async (cid) => {
+	const config = getConfig()
+	const url = `${config.IPFS_GATEWAY}/${cid}`
+	try {
+			const resp = await fetch(url)
+			const respJSON = await resp.json()
+			return respJSON
+	} catch (error) {
+			console.error(error)
+			return undefined
+	}
 }
 
 
