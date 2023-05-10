@@ -77,6 +77,67 @@ func cronjob(config schemas.Config) error {
 	return nil
 }
 
+func decryptKeyPairJSON(privateKeysJson schemas.KeyStoreFile, password string) () {
+
+	// from hex string to byte array
+	iv, err := hex.DecodeString(privateKeysJson.iv)
+	if err != nil {
+		log.Fatal("cannot decode iv: ", err)
+		return err
+	}
+	salt, err := hex.DecodeString(privateKeysJson.Salt)
+	if err != nil {
+		log.Fatal("cannot decode salt: ", err)
+		return err
+	}
+
+	key := pbkdf2.Key([]byte(password), salt, 100000, 32, sha256.New)
+
+
+	// TODO: need to implement following
+  // const encryptedData = Buffer.from(privateKeysJSON.data, "hex");
+
+  // const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+  // const decryptedData = Buffer.concat([
+  //   decipher.update(encryptedData),
+  //   decipher.final(),
+  // ]);
+  // let decryptedDataJSON = JSON.parse(decryptedData.toString("utf8"));
+  // return decryptedDataJSON;
+}
+
+
+// This function comes from https://gist.github.com/brettscott/2ac58ab7cb1c66e2b4a32d6c1c3908a7#file-aes-256-cbc-go-L64
+// Still trying to understand aes-256-cbc decipher
+func Decrypt(encrypted string) (string, error) {
+	key := []byte(CIPHER_KEY)
+	cipherText, _ := hex.DecodeString(encrypted)
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(cipherText) < aes.BlockSize {
+		panic("cipherText too short")
+	}
+	iv := cipherText[:aes.BlockSize]
+	cipherText = cipherText[aes.BlockSize:]
+	if len(cipherText)%aes.BlockSize != 0 {
+		panic("cipherText is not a multiple of the block size")
+	}
+
+	mode := cipher.NewCBCDecrypter(block, iv)
+	mode.CryptBlocks(cipherText, cipherText)
+
+	cipherText, _ = pkcs7.Unpad(cipherText, aes.BlockSize)
+	return fmt.Sprintf("%s", cipherText), nil
+}
+
+
+
+
+
 func extractPrivateKeysFromFS(location string) (schemas.KeyStoreFile, error) {
 	content, err := ioutil.ReadFile(location)
 	if err != nil {
