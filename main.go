@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
@@ -11,8 +12,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"reflect"
 	"strconv"
-	//"os"
 	"time"
 
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
@@ -185,10 +187,12 @@ func decryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string
 
 func getConfig() (schemas.Config, error) {
 
-	// will read from config.json file which exists in the same directory
-
-	// TODO: Check if the file exists
-
+	err := fileExists("myfile.txt")
+	if err != nil {
+		return schemas.Config{}, err
+	}
+	// file exists, do something with it
+	
 	// read the file
 	content, err := ioutil.ReadFile("./config.json")
 	if err != nil {
@@ -204,8 +208,26 @@ func getConfig() (schemas.Config, error) {
 		return schemas.Config{}, err
 	}
 
-	return data, nil
+	dataValue := reflect.ValueOf(&data).Elem()
+	typeOfData := dataValue.Type()
 
+	for i := 0; i < dataValue.NumField(); i++ {
+		fieldValue := dataValue.Field(i).Interface()
+		fieldName := typeOfData.Field(i).Name
+
+		if fieldValue == "" {
+			field := dataValue.Field(i)
+			if field.Kind() == reflect.String {
+				fmt.Printf("Value for %s is missing, enter value: ", fieldName)
+				scanner := bufio.NewScanner(os.Stdin)
+				scanner.Scan()
+				value := scanner.Text()
+				field.SetString(value)
+			}
+		}
+	}
+
+	return data, nil
 }
 
 // This function fetch bids from the Graph
@@ -294,4 +316,12 @@ func fetchFromIPFS(gatewayURL string, cid string) (*schemas.IPFSResponseType, er
 func PrettyPrint(i interface{}) string {
 	s, _ := json.MarshalIndent(i, "", "\t")
 	return string(s)
+}
+
+func fileExists(filename string) error {
+    _, err := os.Stat(filename)
+    if os.IsNotExist(err) {
+        return fmt.Errorf("file %s does not exist", filename)
+    }
+    return err
 }
