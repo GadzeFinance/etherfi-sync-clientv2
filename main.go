@@ -7,48 +7,9 @@ import (
     "io/ioutil"
     "net/http"
     "time"
+	"os"
+	"github.com/robfig/cron"
 )
-
-
-// ********************************
-// ******* GRAPH TYPES ************
-// ********************************
-
-//TODO: Split everything into different files for readibility
-type IPFSResponseType struct {
-	EncryptedKeystoreName string `json:"encryptedKeystoreName"`
-	EncryptedValidatorKey string `json:"encryptedValidatorKey"`
-	EncryptedPassword string `json:"encryptedPassword"`
-	StakerPublicKey string `json:"stakerPublicKey"`
-	NodeOperatorPublicKey string `json:"nodeOperatorPublicKey"`
-	EtherfiDesktopAppVersion string `json:"etherfiDesktopAppVersion"`
-}
-
-type GQLResponseType struct {
-	Data struct {
-		Bids []BidType `json:"bids"`
-	} `json:"data"`
-}
-
-type BidType struct {
-	Id string `json:"id"`
-	BidderAddress string `json:"bidderAddress"`
-  	PubKeyIndex string `json:"pubKeyIndex"`
-  	Validator ValidatorType `json:"validator"`
-}
-
-type ValidatorType struct {
-	Id string `json:"id"`
-	Phase string `json:"phase"`
-  	IpfsHashForEncryptedValidatorKey string `json:"ipfsHashForEncryptedValidatorKey"`
-  	ValidatorPubKey string `json:"validatorPubKey"`        	
-}
-
-
-// ******************************
-// ********** TYPES *************
-// ******************************
-
 
 type Config struct {
 	GRAPH_URL string `json:"GRAPH_URL"`
@@ -70,31 +31,43 @@ func main() {
 	}
 	fmt.Println(PrettyPrint(config))
 
-	// TODO: STEP 2: extract private keys from file
-	
+	c := cron.New()
+	c.AddFunc("0 * * * *", func() { 
 
-	// STEP 3: fetch bids from subgraph
+		if err := cronjob(config) ; err != nil {
+			fmt.Printf("Error executing function: %s\n", err)
+			os.Exit(1)
+		}
+	})
+
+	c.Start()
+
+	for {
+		time.Sleep(time.Second)
+	}
+}
+
+func cronjob(config Config) error {
+
 	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
 	if err != nil {
 		fmt.Println("Error: ", err);
-		return
+		return err
 	}
-
-	// fmt.Println(PrettyPrint(bids))
-
-	// TODO: STEP 4: a loop to process each bid 
+	fmt.Println("Hello")
 	for _, bid := range bids {
 		fmt.Println(bid)
 		// validator, pubKeyIndex := bid.Validator, bid.PubKeyIndex
 		response, err := fetchFromIPFS(config.IPFS_GATEWAY, bid.Validator.IpfsHashForEncryptedValidatorKey)
 		if err != nil {
 			fmt.Println("ERROR")
-			return
+			return err
 		}
 		fmt.Println(PrettyPrint(*response))
 
 	}	
 
+	return nil
 }
 
 
@@ -203,7 +176,6 @@ func fetchFromIPFS (gatewayURL string, cid string) (*IPFSResponseType, error) {
 		return nil, err
 	}
 
-	fmt.Println(PrettyPrint(ipfsResponse))
 	return &ipfsResponse, nil
 }
 
