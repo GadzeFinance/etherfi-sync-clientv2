@@ -14,8 +14,17 @@ import (
 // ******* GRAPH TYPES ************
 // ********************************
 
+//TODO: Split everything into different files for readibility
+type IPFSResponseType struct {
+	EncryptedKeystoreName string `json:"encryptedKeystoreName"`
+	EncryptedValidatorKey string `json:"encryptedValidatorKey"`
+	EncryptedPassword string `json:"encryptedPassword"`
+	StakerPublicKey string `json:"stakerPublicKey"`
+	NodeOperatorPublicKey string `json:"nodeOperatorPublicKey"`
+	EtherfiDesktopAppVersion string `json:"etherfiDesktopAppVersion"`
+}
 
-type ResponseType struct {
+type GQLResponseType struct {
 	Data struct {
 		Bids []BidType `json:"bids"`
 	} `json:"data"`
@@ -24,15 +33,15 @@ type ResponseType struct {
 type BidType struct {
 	Id string `json:"id"`
 	BidderAddress string `json:"bidderAddress"`
-  PubKeyIndex string `json:"pubKeyIndex"`
-  Validator ValidatorType `json:"validator"`
+  	PubKeyIndex string `json:"pubKeyIndex"`
+  	Validator ValidatorType `json:"validator"`
 }
 
 type ValidatorType struct {
 	Id string `json:"id"`
 	Phase string `json:"phase"`
-  IpfsHashForEncryptedValidatorKey string `json:"ipfsHashForEncryptedValidatorKey"`
-  ValidatorPubKey string `json:"validatorPubKey"`        	
+  	IpfsHashForEncryptedValidatorKey string `json:"ipfsHashForEncryptedValidatorKey"`
+  	ValidatorPubKey string `json:"validatorPubKey"`        	
 }
 
 
@@ -42,11 +51,12 @@ type ValidatorType struct {
 
 
 type Config struct {
-	GRAPH_URL string `json"GRAPH_URL"`
-	BIDDER string `json"BIDDER"`
-  PRIVATE_KEYS_FILE_LOCATION string `json"PRIVATE_KEYS_FILE_LOCATION"`
-  OUTPUT_LOCATION string `json"OUTPUT_LOCATION"`
-  PASSWORD string `json"PASSWORD"`
+	GRAPH_URL string `json:"GRAPH_URL"`
+	BIDDER string `json:"BIDDER"`
+	PRIVATE_KEYS_FILE_LOCATION string `json:"PRIVATE_KEYS_FILE_LOCATION"`
+	OUTPUT_LOCATION string `json:"OUTPUT_LOCATION"`
+	PASSWORD string `json:"PASSWORD"`
+	IPFS_GATEWAY string `json:"IPFS_GATEWAY"`
 }
 
 func main() {
@@ -64,11 +74,26 @@ func main() {
 	
 
 	// STEP 3: fetch bids from subgraph
-	bids := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
-	fmt.Println(PrettyPrint(bids))
+	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
+	if err != nil {
+		fmt.Println("Error: ", err);
+		return
+	}
+
+	// fmt.Println(PrettyPrint(bids))
 
 	// TODO: STEP 4: a loop to process each bid 
+	for _, bid := range bids {
+		fmt.Println(bid)
+		// validator, pubKeyIndex := bid.Validator, bid.PubKeyIndex
+		response, err := fetchFromIPFS(config.IPFS_GATEWAY, bid.Validator.IpfsHashForEncryptedValidatorKey)
+		if err != nil {
+			fmt.Println("ERROR")
+			return
+		}
+		fmt.Println(PrettyPrint(*response))
 
+	}	
 
 }
 
@@ -100,7 +125,7 @@ func getConfig () (Config, error) {
 
 
 // This function fetch bids from the Graph
-func retrieveBidsFromSubgraph (GRAPH_URL string, BIDDER string) []BidType {
+func retrieveBidsFromSubgraph (GRAPH_URL string, BIDDER string) ([]BidType, error) {
 
 	// the query to fetch bids
 	queryJsonData := map[string]string{
@@ -122,26 +147,64 @@ func retrieveBidsFromSubgraph (GRAPH_URL string, BIDDER string) []BidType {
 	jsonValue, _ := json.Marshal(queryJsonData)
 
 	request, err := http.NewRequest("POST", GRAPH_URL, bytes.NewBuffer(jsonValue))
+	if err != nil {
+		fmt.Printf("The HTTP request failed with error %s\n", err)
+		// TODO: return []
+		return nil, err
+	}
 	request.Header.Set("Content-Type", "application/json")
 	
 	client := &http.Client{Timeout: time.Second * 10}
 	response, err := client.Do(request)
-	defer response.Body.Close()
 	if err != nil {
 		fmt.Printf("The HTTP request failed with error %s\n", err)
 		// TODO: return []
+		return nil, err
 	}
+	defer response.Body.Close()
 
 	data, _ := ioutil.ReadAll(response.Body)
 
-	var result ResponseType
+	var result GQLResponseType
 	if err := json.Unmarshal(data, &result); err != nil {   // Parse []byte to go struct pointer
-    fmt.Println("Can not unmarshal JSON")
-		// TODO: return []
+    	fmt.Println("Can not unmarshal JSON")
+		return nil, err
 	}
 	
-	return result.Data.Bids
+	return result.Data.Bids, nil
+}
 
+func fetchFromIPFS (gatewayURL string, cid string) (*IPFSResponseType, error) {
+
+	reqURL := gatewayURL + "/" + cid
+	request, err := http.NewRequest("GET", reqURL, nil)
+	if err != nil {
+		fmt.Printf("Unable to create IPFS request")
+		return nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Timeout: time.Second * 10}
+	response, err := client.Do(request)
+	if err != nil {
+		fmt.Printf("The HTTP request failed with error %s\n", err)
+		// TODO: return []
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	body, _ := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var ipfsResponse IPFSResponseType
+	if err := json.Unmarshal(body, &ipfsResponse); err != nil {   // Parse []byte to go struct pointer
+    	fmt.Println("Can not unmarshal JSON")
+		return nil, err
+	}
+
+	fmt.Println(PrettyPrint(ipfsResponse))
+	return &ipfsResponse, nil
 }
 
 // PrettyPrint to print struct in a readable way
