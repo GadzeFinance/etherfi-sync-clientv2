@@ -64,6 +64,7 @@ func cronjob(config schemas.Config) error {
 
 	for i, bid := range bids {
 
+		// for test
 		if i >= 1 {
 			break
 		}
@@ -99,9 +100,45 @@ func cronjob(config schemas.Config) error {
 
 		fmt.Println(PrettyPrint(keypairForIndex))
 
+
+		// Old
+		for (const bid of bids) {
+			//console.log(`> start processing bid with id:${bid.id}`)
+			//const { validator, pubKeyIndex } = bid
+			//const { ipfsHashForEncryptedValidatorKey, validatorPubKey } = validator
+			//const file = await fetchFromIpfs(ipfsHashForEncryptedValidatorKey)
+			//const validatorKey = decryptKeyPairJSON(privateKeys, PASSWORD)
+			//const { pubKeyArray, privKeyArray } = validatorKey
+			// const keypairForIndex = getKeyPairByPubKeyIndex(pubKeyIndex, privKeyArray, pubKeyArray)
+			const data = decryptValidatorKeyInfo(file, keypairForIndex)
+			console.log(`creating ${data.keystoreName} for bid:${bid.id}`)
+			createFSBidOutput(OUTPUT_LOCATION, data, bid.id, validatorPubKey)
+			console.log(`< end processing bid with id:${bid.id}`)
+		}
+
 	}
 
 	return nil
+}
+
+func decryptValidatorKeyInfo (file IPFSResponseType, keypairForIndex KeyPair) {
+
+}
+
+
+
+export const decryptValidatorKeyInfo = (file, keypairForIndex) => {
+  const curve = new EC.ec("secp256k1");
+  const { privateKey, publicKey } = keypairForIndex
+  const stakerPublicKeyHex = file["stakerPublicKey"]
+  const receivedStakerPubKeyPoint = curve.keyFromPublic(stakerPublicKeyHex, "hex").getPublic();
+  const nodeOperatorPrivKey = new BN(privateKey);
+  const nodeOperatorSharedSecret = receivedStakerPubKeyPoint.mul(nodeOperatorPrivKey).getX();
+  const secretAsArray = nodeOperatorSharedSecret.toArrayLike(Buffer, "be", 32)
+  const validatorKeyString = decrypt(file["encryptedValidatorKey"], nodeOperatorSharedSecret.toArrayLike(Buffer, "be", 32));
+  const validatorKeyPassword = decrypt(file["encryptedPassword"],secretAsArray);
+  const keystoreName = decrypt(file["encryptedKeystoreName"],secretAsArray);
+  return { validatorKeyFile: JSON.parse(validatorKeyString), validatorKeyPassword, keystoreName }
 }
 
 
