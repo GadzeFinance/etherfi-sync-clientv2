@@ -100,47 +100,32 @@ func cronjob(config schemas.Config) error {
 			return err
 		}
 
-		fmt.Println(PrettyPrint(keypairForIndex))
+		 fmt.Println(PrettyPrint(keypairForIndex))
 
+		decryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
 
-		// Old
-		for (const bid of bids) {
-			//console.log(`> start processing bid with id:${bid.id}`)
-			//const { validator, pubKeyIndex } = bid
-			//const { ipfsHashForEncryptedValidatorKey, validatorPubKey } = validator
-			//const file = await fetchFromIpfs(ipfsHashForEncryptedValidatorKey)
-			//const validatorKey = decryptKeyPairJSON(privateKeys, PASSWORD)
-			//const { pubKeyArray, privKeyArray } = validatorKey
-			// const keypairForIndex = getKeyPairByPubKeyIndex(pubKeyIndex, privKeyArray, pubKeyArray)
-			const data = decryptValidatorKeyInfo(file, keypairForIndex)
-			console.log(`creating ${data.keystoreName} for bid:${bid.id}`)
-			createFSBidOutput(OUTPUT_LOCATION, data, bid.id, validatorPubKey)
-			console.log(`< end processing bid with id:${bid.id}`)
-		}
+		// // Old
+		// for (const bid of bids) {
+		// 	//console.log(`> start processing bid with id:${bid.id}`)
+		// 	//const { validator, pubKeyIndex } = bid
+		// 	//const { ipfsHashForEncryptedValidatorKey, validatorPubKey } = validator
+		// 	//const file = await fetchFromIpfs(ipfsHashForEncryptedValidatorKey)
+		// 	//const validatorKey = decryptKeyPairJSON(privateKeys, PASSWORD)
+		// 	//const { pubKeyArray, privKeyArray } = validatorKey
+		// 	// const keypairForIndex = getKeyPairByPubKeyIndex(pubKeyIndex, privKeyArray, pubKeyArray)
+		// 	const data = decryptValidatorKeyInfo(file, keypairForIndex)
+		// 	console.log(`creating ${data.keystoreName} for bid:${bid.id}`)
+		// 	createFSBidOutput(OUTPUT_LOCATION, data, bid.id, validatorPubKey)
+		// 	console.log(`< end processing bid with id:${bid.id}`)
+		// }
 
 	}
 
 	return nil
 }
 
-func decryptValidatorKeyInfo (file IPFSResponseType, keypairForIndex KeyPair) {
-
-}
-
-
-
-export const decryptValidatorKeyInfo = (file, keypairForIndex) => {
-  const curve = new EC.ec("secp256k1");
-  const { privateKey, publicKey } = keypairForIndex
-  const stakerPublicKeyHex = file["stakerPublicKey"]
-  const receivedStakerPubKeyPoint = curve.keyFromPublic(stakerPublicKeyHex, "hex").getPublic();
-  const nodeOperatorPrivKey = new BN(privateKey);
-  const nodeOperatorSharedSecret = receivedStakerPubKeyPoint.mul(nodeOperatorPrivKey).getX();
-  const secretAsArray = nodeOperatorSharedSecret.toArrayLike(Buffer, "be", 32)
-  const validatorKeyString = decrypt(file["encryptedValidatorKey"], nodeOperatorSharedSecret.toArrayLike(Buffer, "be", 32));
-  const validatorKeyPassword = decrypt(file["encryptedPassword"],secretAsArray);
-  const keystoreName = decrypt(file["encryptedKeystoreName"],secretAsArray);
-  return { validatorKeyFile: JSON.parse(validatorKeyString), validatorKeyPassword, keystoreName }
+func decryptValidatorKeyInfo (file schemas.IPFSResponseType, keypairForIndex schemas.KeyPair) {
+	fmt.Println(file.StakerPublicKey)
 }
 
 
@@ -224,7 +209,7 @@ func decryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string
 
 func getConfig() (schemas.Config, error) {
 
-	err := fileExists("myfile.txt")
+	err := fileExists("./config.json")
 	if err != nil {
 		return schemas.Config{}, err
 	}
@@ -317,13 +302,13 @@ func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string) ([]schemas.BidTyp
 	return result.Data.Bids, nil
 }
 
-func fetchFromIPFS(gatewayURL string, cid string) (*schemas.IPFSResponseType, error) {
+func fetchFromIPFS(gatewayURL string, cid string) (schemas.IPFSResponseType, error) {
 
 	reqURL := gatewayURL + "/" + cid
 	request, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		fmt.Printf("Unable to create IPFS request")
-		return nil, err
+		return schemas.IPFSResponseType{}, err
 	}
 	request.Header.Set("Content-Type", "application/json")
 	client := &http.Client{Timeout: time.Second * 10}
@@ -331,22 +316,22 @@ func fetchFromIPFS(gatewayURL string, cid string) (*schemas.IPFSResponseType, er
 	if err != nil {
 		fmt.Printf("The HTTP request failed with error %s\n", err)
 		// TODO: return []
-		return nil, err
+		return schemas.IPFSResponseType{}, err
 	}
 	defer response.Body.Close()
 
 	body, _ := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, err
+		return schemas.IPFSResponseType{}, err
 	}
 
 	var ipfsResponse schemas.IPFSResponseType
 	if err := json.Unmarshal(body, &ipfsResponse); err != nil { // Parse []byte to go struct pointer
 		fmt.Println("Can not unmarshal JSON")
-		return nil, err
+		return schemas.IPFSResponseType{}, err
 	}
 
-	return &ipfsResponse, nil
+	return ipfsResponse, nil
 }
 
 // PrettyPrint to print struct in a readable way
