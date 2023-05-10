@@ -21,3 +21,7 @@ The Etherfi Sync Client is a tool designed to simplify the process of accessing 
 6. If any configuration values are missing, the program may prompt you to enter them.
 
 That's it! The Etherfi Sync Client will now automatically query the graph for any won auctions and import the necessary information for prysm.
+
+## Good docs to read for more understanding 
+- https://docs.prylabs.network/docs/how-prysm-works/validator-lifecycle
+- https://docs.prylabs.network/docs/wallet/nondeterministic
