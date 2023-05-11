@@ -54,10 +54,10 @@ func main() {
 
 func cronjob(config schemas.Config) error {
 
-	privateKey, err := extractPrivateKeysFromFS(config.PRIVATE_KEYS_FILE_LOCATION)
-	if err != nil {
-		return err
-	}
+	// privateKey, err := extractPrivateKeysFromFS(config.PRIVATE_KEYS_FILE_LOCATION)
+	// if err != nil {
+	// 	return err
+	// }
 
 	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
 	if err != nil {
@@ -67,6 +67,7 @@ func cronjob(config schemas.Config) error {
 
 	for i, bid := range bids {
 
+		// for test
 		if i >= 1 {
 			break
 		}
@@ -83,29 +84,35 @@ func cronjob(config schemas.Config) error {
 
 		fmt.Println(PrettyPrint(IPFSResponse))
 
-		validatorKey, err := decryptPrivateKeys(privateKey, config.PASSWORD)
+		os.Exit(0)
+		// validatorKey, err := decryptPrivateKeys(privateKey, config.PASSWORD)
+		// if err != nil {
+		// 	return err
+		// }
+		// pubKeyArray := validatorKey.PublicKeys
+		// privKeyArray := validatorKey.PrivateKeys
+
+		// keypairForIndex, err := getKeyPairByPubKeyIndex(bid.PubKeyIndex, pubKeyArray, privKeyArray)
+
 		if err != nil {
 			return err
 		}
-		pubKeyArray := validatorKey.PublicKeys
-		privKeyArray := validatorKey.PrivateKeys
 
-		keypairForIndex, err := getKeyPairByPubKeyIndex(bid.PubKeyIndex, pubKeyArray, privKeyArray)
-
-		if err != nil {
-			return err
-		}
+		// decryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
 
 		var data schemas.ValidatorKeyInfo
 		
-		fmt.Println(PrettyPrint(keypairForIndex))
+		// fmt.Println(PrettyPrint(keypairForIndex))
 		if err := saveKeysToFS(config.OUTPUT_LOCATION, config.CONSENSUS_FOLDER_LOCATION, config.ETHERFI_SC_CLIENT_LOCATION, data, bid.Id, validator.ValidatorPubKey); err != nil {
 			return err
 		}
-
 	}
 
 	return nil
+}
+
+func decryptValidatorKeyInfo (file schemas.IPFSResponseType, keypairForIndex schemas.KeyPair) {
+	fmt.Println(file.StakerPublicKey)
 }
 
 
@@ -229,14 +236,14 @@ func decryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string
 	mode := cipher.NewCBCDecrypter(block, iv)
 	mode.CryptBlocks(ciphertext, ciphertext)
 	// TODO: didn't handle error from PKCS5UnPadding for now, maybe use same function from some packages
-	decryptedData := PKCS5UnPadding(ciphertext)
+	// decryptedData := nil
 
 	var decryptedDataJSON schemas.DecryptedDataJSON
-	err = json.Unmarshal(decryptedData, &decryptedDataJSON)
-	if err != nil {
-		panic(err)
-		return schemas.DecryptedDataJSON{}, err
-	}
+	// err = json.Unmarshal(decryptedData, &decryptedDataJSON)
+	// if err != nil {
+	// 	panic(err)
+	// 	return schemas.DecryptedDataJSON{}, err
+	// }
 
 	// fmt.Println(PrettyPrint(decryptedDataJSON))
 	
@@ -246,7 +253,7 @@ func decryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string
 
 func getConfig() (schemas.Config, error) {
 
-	err := fileExists("config.json")
+	err := fileExists("./config.json")
 	if err != nil {
 		return schemas.Config{}, err
 	}
