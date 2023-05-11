@@ -22,6 +22,7 @@ import (
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	//"github.com/robfig/cron"
 	"golang.org/x/crypto/pbkdf2"
+	"path/filepath"
 )
 
 func main() {
@@ -55,10 +56,10 @@ func main() {
 
 func cronjob(config schemas.Config) error {
 
-	privateKey, err := extractPrivateKeysFromFS(config.PRIVATE_KEYS_FILE_LOCATION)
-	if err != nil {
-		return err
-	}
+	// privateKey, err := extractPrivateKeysFromFS(config.PRIVATE_KEYS_FILE_LOCATION)
+	// if err != nil {
+	// 	return err
+	// }
 
 	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
 	if err != nil {
@@ -84,21 +85,27 @@ func cronjob(config schemas.Config) error {
 		}
 
 		fmt.Println(PrettyPrint(IPFSResponse))
-		fmt.Println(bid.Id)
-		
-		validatorKey, err := decryptPrivateKeys(privateKey, config.PASSWORD)
+
+		os.Exit(0)
+		// validatorKey, err := decryptPrivateKeys(privateKey, config.PASSWORD)
+		// if err != nil {
+		// 	return err
+		// }
+		// pubKeyArray := validatorKey.PublicKeys
+		// privKeyArray := validatorKey.PrivateKeys
+
+		// keypairForIndex, err := getKeyPairByPubKeyIndex(bid.PubKeyIndex, pubKeyArray, privKeyArray)
+
 		if err != nil {
 			return err
 		}
-		
-		//fmt.Println(PrettyPrint(validatorKey))
-		
-		pubKeyArray := validatorKey.PublicKeys
-		privKeyArray := validatorKey.PrivateKeys
 
-		keypairForIndex, err := getKeyPairByPubKeyIndex(bid.PubKeyIndex, pubKeyArray, privKeyArray)
+		// decryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
 
-		if err != nil {
+		var data schemas.ValidatorKeyInfo
+		
+		// fmt.Println(PrettyPrint(keypairForIndex))
+		if err := saveKeysToFS(config.OUTPUT_LOCATION, config.CONSENSUS_FOLDER_LOCATION, config.ETHERFI_SC_CLIENT_LOCATION, data, bid.Id, validator.ValidatorPubKey); err != nil {
 			return err
 		}
 
@@ -184,6 +191,64 @@ func decryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 }
 
 
+func saveKeysToFS(ouput_location string, consensus_location string, client_location string , validatorInfo schemas.ValidatorKeyInfo, bidId string, validatorPublicKey string) error {
+
+	// Step 1: Create directory and add data to the directory
+	if err := createDir(ouput_location); err != nil {
+		return err
+	}
+
+	bidPath := filepath.Join(ouput_location, bidId)
+	if err := createDir(bidPath); err != nil {
+		return err
+	}
+
+	if err := createFile(filepath.Join(bidPath, "pw.txt"), string(validatorInfo.ValidatorKeyPassword)); err != nil {
+		return err
+	}	
+
+	if err := createFile(filepath.Join(bidPath, "pubkey.txt"), validatorPublicKey); err != nil {
+		return err
+	}	
+
+	if err := createFile(filepath.Join(bidPath, string(validatorInfo.KeystoreName)), string(validatorInfo.ValidatorKeyFile)); err != nil {
+		return err
+	}	
+
+	// Step 2: Create an easy to run script (not sure if we need to do this)
+	bashHeader := "#!/bin/bash -xe \n"
+	echoLine := fmt.Sprintf("echo \"Adding keystore to prysm for validator with pubkey:%s ...\" \n", validatorPublicKey[:10])
+	changeDirLine := fmt.Sprintf("cd %s \n", consensus_location)
+	keysDir := filepath.Join(client_location, "storage", "output", bidId, string(validatorInfo.KeystoreName))
+
+	prysmCommand := fmt.Sprintf("sudo ./prysm.sh validator accounts import --goerli --wallet-dir=%s --keys-dir=%s", consensus_location, keysDir)
+	scriptContent := fmt.Sprintf("%s %s %s %s", bashHeader, echoLine, changeDirLine, prysmCommand)
+	if err := createFile(filepath.Join(bidPath, "add.sh"), scriptContent); err != nil {
+		return err
+	}	
+
+	return nil
+}
+
+func createDir(location string) error {
+	if _, err := os.Stat(location); os.IsNotExist(err) {
+		// path/to/whatever does not exist
+		err := os.Mkdir(location, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func createFile(location string, content string) error {
+    if _, err := os.Stat(location); !os.IsNotExist(err) {
+        return err
+    }
+    ioutil.WriteFile(location, []byte(content), 0644)
+	return nil
+}
+
 func getKeyPairByPubKeyIndex(pubkeyIndexString string, privateKeys []string, publicKeys []string) (schemas.KeyPair, error) {
 	//fmt.Println("index:", pubkeyIndexString)
 	index, err := strconv.ParseInt(pubkeyIndexString, 10, 0)
@@ -246,15 +311,14 @@ func decryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string
 	mode := cipher.NewCBCDecrypter(block, iv)
 	mode.CryptBlocks(ciphertext, ciphertext)
 	// TODO: didn't handle error from PKCS5UnPadding for now, maybe use same function from some packages
-	decryptedData := PKCS5UnPadding(ciphertext)
+	// decryptedData := nil
 
 	var decryptedDataJSON schemas.DecryptedDataJSON
-	err = json.Unmarshal(decryptedData, &decryptedDataJSON)
-	if err != nil {
-		panic(err)
-		panic(decryptedDataJSON)
-		return schemas.DecryptedDataJSON{}, err
-	}
+	// err = json.Unmarshal(decryptedData, &decryptedDataJSON)
+	// if err != nil {
+	// 	panic(err)
+	// 	return schemas.DecryptedDataJSON{}, err
+	// }
 
 	// fmt.Println(PrettyPrint(decryptedDataJSON))
 	

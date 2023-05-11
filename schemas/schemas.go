@@ -7,7 +7,16 @@ type Config struct {
 	OUTPUT_LOCATION string `json:"OUTPUT_LOCATION"`
 	PASSWORD string `json:"PASSWORD"`
 	IPFS_GATEWAY string `json:"IPFS_GATEWAY"`
+	CONSENSUS_FOLDER_LOCATION string `json:"CONSENSUS_FOLDER_LOCATION"`
+	ETHERFI_SC_CLIENT_LOCATION string `json:"ETHERFI_SC_CLIENT_LOCATION"`
 }
+
+type ValidatorKeyInfo struct {
+	ValidatorKeyFile []byte `json:"validatorKeyFile"`
+	ValidatorKeyPassword []byte `json:"validatorKeyPassword"`
+	KeystoreName []byte `json:"keystoreName"`
+}
+
 
 type KeyStoreFile struct {
 	Iv string `json:"iv"`
