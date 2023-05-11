@@ -2,7 +2,10 @@
 	"GRAPH_URL": "https://api.studio.thegraph.com/query/41778/goerli-dressrehearsal-1/0.0.6",
 	"BIDDER": "0xF88866238ecE28A41e050b04360423a5d1181d49",
   "PRIVATE_KEYS_FILE_LOCATION": "./privateEtherfiKeystore-1682692241467.json",
-  "OUTPUT_LOCATION": "/_storage_/output",
+  "OUTPUT_LOCATION": "output",
   "PASSWORD": "Password123!",
-  "IPFS_GATEWAY": "https://ether-fi-goerli.infura-ipfs.io/ipfs"
+  "IPFS_GATEWAY": "https://ether-fi-goerli.infura-ipfs.io/ipfs",
+  "CONSENSUS_FOLDER_LOCATION": ".",
+  "ETHERFI_SC_CLIENT_LOCATION": "."
+
 }

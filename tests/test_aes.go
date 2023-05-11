@@ -96,13 +96,13 @@ func PKCS5UnPadding(src []byte) []byte {
 	return src[:(length - unpadding)]
 }
 
-func main() {
+// func main() {
 
-	key := "6368616e676520746869732070617373"
-	text := "exampleplaintext"
+// 	key := "6368616e676520746869732070617373"
+// 	text := "exampleplaintext"
 
-	en_string := encrypt(text, key)
+// 	en_string := encrypt(text, key)
 
-	decrypt(en_string, key)
+// 	decrypt(en_string, key)
 
-}
+// }

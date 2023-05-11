@@ -17,7 +17,6 @@ type ValidatorKeyInfo struct {
 	KeystoreName []byte `json:"keystoreName"`
 }
 
-
 type KeyStoreFile struct {
 	Iv string `json:"iv"`
 	Salt string `json:"salt"`
@@ -62,10 +61,4 @@ type DecryptedDataJSON struct {
 type KeyPair struct {
 	PublicKey string `json:"publicKey"`
 	PrivateKey string `json:"privateKey"`
-}
-
-type ValidatorKeyInfo struct {
-	ValidatorKeyFile []byte `json:"validatorKeyFile"`
-	ValidatorKeyPassword []byte `json:"validatorKeyPassword"`
-	KeystoreName []byte `json:"keystoreName"`
 }

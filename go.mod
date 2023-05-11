@@ -17,6 +17,7 @@ require (
 	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/robfig/cron v1.2.0
 	golang.org/x/sys v0.8.0 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
