@@ -22,7 +22,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-func main() {
+func tmp() {
 
 	// STEP 1: fetch env variables from json/.env file
 	// NOTE: I'm using json now, but easy to switch
