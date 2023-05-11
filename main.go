@@ -20,6 +20,7 @@ import (
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	//"github.com/robfig/cron"
 	"golang.org/x/crypto/pbkdf2"
+	"path/filepath"
 )
 
 func main() {
@@ -81,15 +82,11 @@ func cronjob(config schemas.Config) error {
 		}
 
 		fmt.Println(PrettyPrint(IPFSResponse))
-		fmt.Println(bid.Id)
-		
+
 		validatorKey, err := decryptPrivateKeys(privateKey, config.PASSWORD)
 		if err != nil {
 			return err
 		}
-		
-		//fmt.Println(PrettyPrint(validatorKey))
-		
 		pubKeyArray := validatorKey.PublicKeys
 		privKeyArray := validatorKey.PrivateKeys
 
@@ -99,13 +96,76 @@ func cronjob(config schemas.Config) error {
 			return err
 		}
 
+		var data schemas.ValidatorKeyInfo
+		
 		fmt.Println(PrettyPrint(keypairForIndex))
+		if err := saveKeysToFS(config.OUTPUT_LOCATION, config.CONSENSUS_FOLDER_LOCATION, config.ETHERFI_SC_CLIENT_LOCATION, data, bid.Id, validator.ValidatorPubKey); err != nil {
+			return err
+		}
 
 	}
 
 	return nil
 }
 
+
+func saveKeysToFS(ouput_location string, consensus_location string, client_location string , validatorInfo schemas.ValidatorKeyInfo, bidId string, validatorPublicKey string) error {
+
+	// Step 1: Create directory and add data to the directory
+	if err := createDir(ouput_location); err != nil {
+		return err
+	}
+
+	bidPath := filepath.Join(ouput_location, bidId)
+	if err := createDir(bidPath); err != nil {
+		return err
+	}
+
+	if err := createFile(filepath.Join(bidPath, "pw.txt"), string(validatorInfo.ValidatorKeyPassword)); err != nil {
+		return err
+	}	
+
+	if err := createFile(filepath.Join(bidPath, "pubkey.txt"), validatorPublicKey); err != nil {
+		return err
+	}	
+
+	if err := createFile(filepath.Join(bidPath, string(validatorInfo.KeystoreName)), string(validatorInfo.ValidatorKeyFile)); err != nil {
+		return err
+	}	
+
+	// Step 2: Create an easy to run script (not sure if we need to do this)
+	bashHeader := "#!/bin/bash -xe \n"
+	echoLine := fmt.Sprintf("echo \"Adding keystore to prysm for validator with pubkey:%s ...\" \n", validatorPublicKey[:10])
+	changeDirLine := fmt.Sprintf("cd %s \n", consensus_location)
+	keysDir := filepath.Join(client_location, "storage", "output", bidId, string(validatorInfo.KeystoreName))
+
+	prysmCommand := fmt.Sprintf("sudo ./prysm.sh validator accounts import --goerli --wallet-dir=%s --keys-dir=%s", consensus_location, keysDir)
+	scriptContent := fmt.Sprintf("%s %s %s %s", bashHeader, echoLine, changeDirLine, prysmCommand)
+	if err := createFile(filepath.Join(bidPath, "add.sh"), scriptContent); err != nil {
+		return err
+	}	
+
+	return nil
+}
+
+func createDir(location string) error {
+	if _, err := os.Stat(location); os.IsNotExist(err) {
+		// path/to/whatever does not exist
+		err := os.Mkdir(location, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func createFile(location string, content string) error {
+    if _, err := os.Stat(location); !os.IsNotExist(err) {
+        return err
+    }
+    ioutil.WriteFile(location, []byte(content), 0644)
+	return nil
+}
 
 func getKeyPairByPubKeyIndex(pubkeyIndexString string, privateKeys []string, publicKeys []string) (schemas.KeyPair, error) {
 	//fmt.Println("index:", pubkeyIndexString)
@@ -175,7 +235,6 @@ func decryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string
 	err = json.Unmarshal(decryptedData, &decryptedDataJSON)
 	if err != nil {
 		panic(err)
-		panic(decryptedDataJSON)
 		return schemas.DecryptedDataJSON{}, err
 	}
 
@@ -187,7 +246,7 @@ func decryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string
 
 func getConfig() (schemas.Config, error) {
 
-	err := fileExists("myfile.txt")
+	err := fileExists("config.json")
 	if err != nil {
 		return schemas.Config{}, err
 	}
@@ -280,13 +339,13 @@ func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string) ([]schemas.BidTyp
 	return result.Data.Bids, nil
 }
 
-func fetchFromIPFS(gatewayURL string, cid string) (*schemas.IPFSResponseType, error) {
+func fetchFromIPFS(gatewayURL string, cid string) (schemas.IPFSResponseType, error) {
 
 	reqURL := gatewayURL + "/" + cid
 	request, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		fmt.Printf("Unable to create IPFS request")
-		return nil, err
+		return schemas.IPFSResponseType{}, err
 	}
 	request.Header.Set("Content-Type", "application/json")
 	client := &http.Client{Timeout: time.Second * 10}
@@ -294,22 +353,22 @@ func fetchFromIPFS(gatewayURL string, cid string) (*schemas.IPFSResponseType, er
 	if err != nil {
 		fmt.Printf("The HTTP request failed with error %s\n", err)
 		// TODO: return []
-		return nil, err
+		return schemas.IPFSResponseType{}, err
 	}
 	defer response.Body.Close()
 
 	body, _ := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, err
+		return schemas.IPFSResponseType{}, err
 	}
 
 	var ipfsResponse schemas.IPFSResponseType
 	if err := json.Unmarshal(body, &ipfsResponse); err != nil { // Parse []byte to go struct pointer
 		fmt.Println("Can not unmarshal JSON")
-		return nil, err
+		return schemas.IPFSResponseType{}, err
 	}
 
-	return &ipfsResponse, nil
+	return ipfsResponse, nil
 }
 
 // PrettyPrint to print struct in a readable way
