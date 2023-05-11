@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"math/big"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -17,12 +18,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	//"github.com/robfig/cron"
 	"golang.org/x/crypto/pbkdf2"
 )
 
-func tmp() {
+func main() {
 
 	// STEP 1: fetch env variables from json/.env file
 	// NOTE: I'm using json now, but easy to switch
@@ -100,32 +102,85 @@ func cronjob(config schemas.Config) error {
 			return err
 		}
 
-		 fmt.Println(PrettyPrint(keypairForIndex))
+		fmt.Println(PrettyPrint(keypairForIndex))
 
-		decryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
+		data := decryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
 
-		// // Old
-		// for (const bid of bids) {
-		// 	//console.log(`> start processing bid with id:${bid.id}`)
-		// 	//const { validator, pubKeyIndex } = bid
-		// 	//const { ipfsHashForEncryptedValidatorKey, validatorPubKey } = validator
-		// 	//const file = await fetchFromIpfs(ipfsHashForEncryptedValidatorKey)
-		// 	//const validatorKey = decryptKeyPairJSON(privateKeys, PASSWORD)
-		// 	//const { pubKeyArray, privKeyArray } = validatorKey
-		// 	// const keypairForIndex = getKeyPairByPubKeyIndex(pubKeyIndex, privKeyArray, pubKeyArray)
-		// 	const data = decryptValidatorKeyInfo(file, keypairForIndex)
-		// 	console.log(`creating ${data.keystoreName} for bid:${bid.id}`)
-		// 	createFSBidOutput(OUTPUT_LOCATION, data, bid.id, validatorPubKey)
-		// 	console.log(`< end processing bid with id:${bid.id}`)
-		// }
+
 
 	}
 
 	return nil
 }
 
-func decryptValidatorKeyInfo (file schemas.IPFSResponseType, keypairForIndex schemas.KeyPair) {
-	fmt.Println(file.StakerPublicKey)
+func fromString(str string) *big.Int {
+	// Parse the input string as a decimal string
+	res := big.NewInt(0)
+	for _, ch := range str {
+		res.Mul(res, big.NewInt(10))
+		val := new(big.Int)
+		val.SetString(string(ch), 16)
+		res.Add(res, val)
+	}
+	return res
+}
+
+func decryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex schemas.KeyPair) schemas.ValidatorKeyInfo {
+	privateKey := keypairForIndex.PrivateKey
+	publicKey := keypairForIndex.PublicKey
+	encryptedValidatorKey := file.EncryptedValidatorKey
+	encryptedKeystoreName := file.EncryptedKeystoreName
+	encryptedPassword := file.EncryptedPassword
+
+	stakerPublicKeyHex := file.StakerPublicKey
+
+	bStakerPubKey, err := hex.DecodeString(stakerPublicKeyHex)
+	if err != nil {
+		panic(err)
+	}
+
+	receivedStakerPubKeyPoint, err := crypto.UnmarshalPubkey(bStakerPubKey)
+	if err != nil {
+		panic(err)
+	}
+
+	// fmt.Println(receivedStakerPubKeyPoint.X) [OK]
+
+	nodeOperatorPrivKey := fromString(privateKey)
+
+	fmt.Println("privKey:", nodeOperatorPrivKey.String())
+
+	// Is this mod generic to use? because I didn't realy understand the math
+	beMod, _ := big.NewInt(0).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
+	nodeOperatorPrivKey.Mod(nodeOperatorPrivKey, beMod)
+
+	fmt.Println(nodeOperatorPrivKey)
+
+	curve := crypto.S256()
+	nodeOperatorSharedSecret, _ := curve.ScalarMult(receivedStakerPubKeyPoint.X, receivedStakerPubKeyPoint.Y, nodeOperatorPrivKey.Bytes())
+
+	//pubx, puby := elliptic.Unmarshal(curve, bStakerPubKey)
+	//fmt.Println(pubx, puby)
+	//x, y := curve.ScalarMult(pubx, puby, nodeOperatorPrivKey.Bytes())
+
+	fmt.Println("shared secret:", nodeOperatorSharedSecret)
+
+	secretAsArray := nodeOperatorSharedSecret.Bytes()
+	// secretAsArray := nodeOperatorSharedSecret.String()
+
+	fmt.Println("secretAsArray:", len(secretAsArray), secretAsArray)
+
+	bValidatorKey, _ := Decrypt(encryptedValidatorKey, hex.EncodeToString(secretAsArray))
+	bValidatorKeyPassword, _ := Decrypt(encryptedPassword, hex.EncodeToString(secretAsArray))
+	bKeystoreName, _ := Decrypt(encryptedKeystoreName, hex.EncodeToString(secretAsArray))
+
+	// fmt.Println(validatorKeyString, validatorKeyPassword, keystoreName)
+
+	return schemas.ValidatorKeyInfo {
+		ValidatorKeyFile: bValidatorKey,
+		ValidatorKeyPassword: bValidatorKeyPassword,
+		KeystoreName: bKeystoreName,
+	}
 }
 
 

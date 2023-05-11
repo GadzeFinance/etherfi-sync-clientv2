@@ -54,3 +54,9 @@ type KeyPair struct {
 	PublicKey string `json:"publicKey"`
 	PrivateKey string `json:"privateKey"`
 }
+
+type ValidatorKeyInfo struct {
+	ValidatorKeyFile []byte `json:"validatorKeyFile"`
+	ValidatorKeyPassword []byte `json:"validatorKeyPassword"`
+	KeystoreName []byte `json:"keystoreName"`
+}

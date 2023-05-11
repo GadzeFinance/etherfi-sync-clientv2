@@ -1,7 +1,7 @@
 
 const EC = require('elliptic')
 const BN = require('bn.js')
-
+const crypto = require('crypto')
 
 const decryptValidatorKeyInfo = (keypairForIndex) => {
   const curve = new EC.ec("secp256k1");
@@ -11,9 +11,6 @@ const decryptValidatorKeyInfo = (keypairForIndex) => {
   console.log("receivedStakerPubKeyPoint", receivedStakerPubKeyPoint.getX().toString())
   const nodeOperatorPrivKey = new BN(privateKey);
 
-  const test1 = new BN("04653949f11");
-  console.log("test1:", test1.toString())
-
   console.log("nodeOperatorPrivKey", nodeOperatorPrivKey.toString())
   const nodeOperatorSharedSecret = receivedStakerPubKeyPoint.mul(nodeOperatorPrivKey).getX();
 
@@ -22,9 +19,22 @@ const decryptValidatorKeyInfo = (keypairForIndex) => {
   console.log(secretAsArray)
   //const validatorKeyString = decrypt(file["encryptedValidatorKey"], nodeOperatorSharedSecret.toArrayLike(Buffer, "be", 32));
   //const validatorKeyPassword = decrypt(file["encryptedPassword"],secretAsArray);
-  const keystoreName = decrypt(file["encryptedKeystoreName"],secretAsArray);
+  const keystoreName = decrypt("3753d1206611e6ab3ef686a3e2ca1c71:83a2f9316bafde517ccba982a8979baa75211fdbec7340536c057f411eb0cd34552098ccb46c452118a8f51195ebf474", secretAsArray);
   console.log("keystoreName:", keystoreName)
   // return { validatorKeyFile: JSON.parse(validatorKeyString), validatorKeyPassword, keystoreName }
+}
+
+function decrypt(text, ENCRYPTION_KEY) {
+
+  let textParts = text.split(':');
+  let iv = Buffer.from(textParts.shift(), 'hex');
+  let encryptedText = Buffer.from(textParts.join(':'), 'hex');
+  let decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
+  let decrypted = decipher.update(encryptedText);
+
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+
+  return decrypted.toString();
 }
 
 const keypairForIndex = {
