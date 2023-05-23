@@ -124,24 +124,24 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		pubKeyArray := validatorKey.PublicKeys
 		privKeyArray := validatorKey.PrivateKeys
 
-		keypairForIndex, err := getKeyPairByPubKeyIndex(bid.PubKeyIndex, pubKeyArray, privKeyArray)
+		keypairForIndex, err := getKeyPairByPubKeyIndex(bid.PubKeyIndex, privKeyArray, pubKeyArray)
 
 		if err != nil {
 			return err
 		}
 
-		// fmt.Println(PrettyPrint(keypairForIndex))
 		data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
+		
 		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, config.CONSENSUS_FOLDER_LOCATION, config.ETHERFI_SC_CLIENT_LOCATION, data, bid.Id, validator.ValidatorPubKey, db); err != nil {
 			return err
 		}
+
 	}
 
 	return nil
 }
 
 func getKeyPairByPubKeyIndex(pubkeyIndexString string, privateKeys []string, publicKeys []string) (schemas.KeyPair, error) {
-	//fmt.Println("index:", pubkeyIndexString)
 	index, err := strconv.ParseInt(pubkeyIndexString, 10, 0)
 	if err != nil {
 		return schemas.KeyPair{}, err

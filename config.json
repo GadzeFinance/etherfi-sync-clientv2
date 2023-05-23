@@ -1,7 +1,7 @@
 {
 	"GRAPH_URL": "https://api.studio.thegraph.com/proxy/41778/etherfi-goerli/0.0.1",
 	"BIDDER": "0xef545097fdcfd24add3ba7652d238acbde825ff7",
-  "PRIVATE_KEYS_FILE_LOCATION": "./privateEtherfiKeystore-1684500211284.json",
+  "PRIVATE_KEYS_FILE_LOCATION": "./privateEtherfiKeystore-1684872754180.json",
   "OUTPUT_LOCATION": "output",
   "PASSWORD": "Password123!",
   "IPFS_GATEWAY": "https://etherfi-goerli.infura-ipfs.io/ipfs",

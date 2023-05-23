@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"strings"
 
@@ -17,6 +16,7 @@ import (
 
 func fromString(str string) *big.Int {
 	// Parse the input string as a decimal string
+	// This imitates the wierd behavior of BN.js
 	res := big.NewInt(0)
 	for _, ch := range str {
 		res.Mul(res, big.NewInt(10))
@@ -28,43 +28,42 @@ func fromString(str string) *big.Int {
 }
 
 func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex schemas.KeyPair) schemas.ValidatorKeyInfo {
+	// Fetch necessary data
 	privateKey := keypairForIndex.PrivateKey
 	encryptedValidatorKey := file.EncryptedValidatorKey
 	encryptedKeystoreName := file.EncryptedKeystoreName
 	encryptedPassword := file.EncryptedPassword
-
 	stakerPublicKeyHex := file.StakerPublicKey
-
+	
+	// Get the staker's public key from its hex string
 	bStakerPubKey, err := hex.DecodeString(stakerPublicKeyHex)
 	if err != nil {
 		panic(err)
+		return schemas.ValidatorKeyInfo{}
 	}
-
+	
+	// Get the staker's pubkey point from the public key
 	receivedStakerPubKeyPoint, err := crypto.UnmarshalPubkey(bStakerPubKey)
 	if err != nil {
 		panic(err)
+		return schemas.ValidatorKeyInfo{}
 	}
-
+	
+	// Get the NO's private key
 	nodeOperatorPrivKey := fromString(privateKey)
-
-	// Is this mod generic to use? because I didn't realy understand the math
+	// It seems that we need to mod this value to get the private key fit in to the curve library functions
 	beMod, _ := big.NewInt(0).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
 	nodeOperatorPrivKey.Mod(nodeOperatorPrivKey, beMod)
 
-	// fmt.Println(nodeOperatorPrivKey)
-
+	// Multiply the staker's pubKey point and NO's private key to generate shared secret
 	curve := crypto.S256()
 	nodeOperatorSharedSecret, _ := curve.ScalarMult(receivedStakerPubKeyPoint.X, receivedStakerPubKeyPoint.Y, nodeOperatorPrivKey.Bytes())
-
-
 	secretAsArray := nodeOperatorSharedSecret.Bytes()
 
-	// fmt.Println("secretAsArray:", len(secretAsArray), secretAsArray)
-
+	// Use the shared secret to decrypt encrypted data
 	bValidatorKey, _ := Decrypt(encryptedValidatorKey, hex.EncodeToString(secretAsArray))
 	bValidatorKeyPassword, _ := Decrypt(encryptedPassword, hex.EncodeToString(secretAsArray))
 	bKeystoreName, _ := Decrypt(encryptedKeystoreName, hex.EncodeToString(secretAsArray))
-
 
 	return schemas.ValidatorKeyInfo{
 		ValidatorKeyFile:     bValidatorKey,
@@ -73,54 +72,38 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 	}
 }
 
+
 func Decrypt(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) {
+	// Decode the encryption key
+	key, err := hex.DecodeString(ENCRYPTION_KEY)
 
-	key := []byte(ENCRYPTION_KEY)
+	// There're three parts in the encrypted string: [iv]:[data]:[authTag]
 	parts := strings.Split(encrypted_string, ":")
-
-	// the encrypted string should has the from [iv]:[ciphertext]
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("ciphertext is not a multiple of 16")
-	}
-
 	iv, err := hex.DecodeString(parts[0])
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode iv:", err)
-	}
+	ciphertext, err := hex.DecodeString(parts[1] + parts[2])
 
-	ciphertext, _ := hex.DecodeString(parts[1])
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode ciphertext:", err)
-	}
-
+	// Create an AES cipher
 	block, err := aes.NewCipher(key)
-
 	if err != nil {
-		return nil, err
+		panic(err.Error())
+		return []byte{}, err
 	}
 
-	if len(ciphertext)%aes.BlockSize != 0 {
-		return nil, fmt.Errorf("ciphertext is not a multiple of 16")
+	// Create a new GCM mode cipher
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		panic(err.Error())
+		return []byte{}, err
 	}
 
-	mode := cipher.NewCBCDecrypter(block, iv)
+	// Decrypt using the cipher
+	plaintext, err := aesgcm.Open(nil, iv, ciphertext, nil)
+	if err != nil {
+		panic(err.Error())
+		return []byte{}, err
+	}
 
-	// WARNING: didn't handle error from PKCS5UnPadding for now, maybe use same function from some packages
-	ciphertext = PKCS5UnPadding(ciphertext)
-
-	mode.CryptBlocks(ciphertext, ciphertext)
-
-	return ciphertext, nil
-
-}
-
-// WARNING: NOT SURE IF THIS IS SECURE
-// PKCS5UnPadding pads a certain blob of data with necessary data to be used in AES block cipher
-func PKCS5UnPadding(src []byte) []byte {
-	length := len(src)
-	unpadding := int(src[length-1])
-
-	return src[:(length - unpadding)]
+	return plaintext, nil
 }
 
 func DecryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string) (schemas.DecryptedDataJSON, error) {
@@ -134,36 +117,34 @@ func DecryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string
 		panic(err)
 		return schemas.DecryptedDataJSON{}, err
 	}
-	ciphertext, err := hex.DecodeString(privateKeys.Data)
+	ciphertext, err := hex.DecodeString(privateKeys.Data + privateKeys.AuthTag)
 	if err != nil {
 		panic(err)
 		return schemas.DecryptedDataJSON{}, err
 	}
 
-	// TODO: we need to figure out how the last big of the cryptography works
 	key := pbkdf2.Key([]byte(privKeyPassword), salt, 100000, 32, sha256.New)
-
 	block, err := aes.NewCipher(key)
-
 	if err != nil {
-		panic(err)
+		panic(err.Error())
 		return schemas.DecryptedDataJSON{}, err
 	}
-
-	mode := cipher.NewCBCDecrypter(block, iv)
-	mode.CryptBlocks(ciphertext, ciphertext)
-	// TODO: didn't handle error from PKCS5UnPadding for now, maybe use same function from some packages
-	decryptedData := PKCS5UnPadding(ciphertext)
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		panic(err.Error())
+		return schemas.DecryptedDataJSON{}, err
+	}
+	plaintext, err := aesgcm.Open(nil, iv, ciphertext, nil)
+	if err != nil {
+		panic(err.Error())
+	}
 
 	var decryptedDataJSON schemas.DecryptedDataJSON
-	err = json.Unmarshal(decryptedData, &decryptedDataJSON)
+	err = json.Unmarshal(plaintext, &decryptedDataJSON)
 	if err != nil {
 		panic(err)
 		return schemas.DecryptedDataJSON{}, err
 	}
 
-	// fmt.Println(PrettyPrint(decryptedDataJSON))
-
 	return decryptedDataJSON, nil
-
 }
