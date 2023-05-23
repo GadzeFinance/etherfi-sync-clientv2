@@ -4,8 +4,7 @@
   "PRIVATE_KEYS_FILE_LOCATION": "./privateEtherfiKeystore-1682692241467.json",
   "OUTPUT_LOCATION": "output",
   "PASSWORD": "Password123!",
-  "IPFS_GATEWAY": "https://ether-fi-goerli.infura-ipfs.io/ipfs",
+  "IPFS_GATEWAY": "https://etherfi-goerli.infura-ipfs.io/ipfs",
   "CONSENSUS_FOLDER_LOCATION": ".",
   "ETHERFI_SC_CLIENT_LOCATION": "."
-
 }

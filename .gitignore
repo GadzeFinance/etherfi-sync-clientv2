@@ -2,3 +2,5 @@ tests/node_modules/
 output/*
 privateEtherfiKeystore-1682692241467.json
 config.json
+data.db
+etherfi-sync-clientv2
