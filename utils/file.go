@@ -1,16 +1,18 @@
 package utils
 
 import (
+	"bufio"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
-	"time"
-	"path/filepath"
-	"os"
 	"log"
-	"bufio"
+	"net/http"
+	"os"
+	"path/filepath"
 	"reflect"
+	"time"
+
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 )
 
@@ -46,7 +48,7 @@ func FetchFromIPFS(gatewayURL string, cid string) (schemas.IPFSResponseType, err
 	return ipfsResponse, nil
 }
 
-func SaveKeysToFS(output_location string, consensus_location string, client_location string, validatorInfo schemas.ValidatorKeyInfo, bidId string, validatorPublicKey string) error {
+func SaveKeysToFS(output_location string, consensus_location string, client_location string, validatorInfo schemas.ValidatorKeyInfo, bidId string, validatorPublicKey string, db *sql.DB) error {
 
 	// Step 1: Create directory and add data to the directory
 	if err := createDir(output_location); err != nil {
@@ -68,6 +70,18 @@ func SaveKeysToFS(output_location string, consensus_location string, client_loca
 
 	if err := createFile(filepath.Join(bidPath, string(validatorInfo.KeystoreName)), string(validatorInfo.ValidatorKeyFile)); err != nil {
 		return err
+	}
+
+	query := "INSERT INTO winning_bids (id, pubkey, password) VALUES (?, ?, ?)"
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(bidId, validatorPublicKey, string(validatorInfo.ValidatorKeyPassword))
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// Step 2: Create an easy to run script (not sure if we need to do this)

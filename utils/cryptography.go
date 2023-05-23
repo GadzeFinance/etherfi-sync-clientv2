@@ -47,8 +47,6 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 
 	nodeOperatorPrivKey := fromString(privateKey)
 
-	// fmt.Println("privKey:", nodeOperatorPrivKey.String())
-
 	// Is this mod generic to use? because I didn't realy understand the math
 	beMod, _ := big.NewInt(0).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
 	nodeOperatorPrivKey.Mod(nodeOperatorPrivKey, beMod)
@@ -58,7 +56,6 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 	curve := crypto.S256()
 	nodeOperatorSharedSecret, _ := curve.ScalarMult(receivedStakerPubKeyPoint.X, receivedStakerPubKeyPoint.Y, nodeOperatorPrivKey.Bytes())
 
-	// fmt.Println("shared secret:", nodeOperatorSharedSecret)
 
 	secretAsArray := nodeOperatorSharedSecret.Bytes()
 
@@ -68,7 +65,6 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 	bValidatorKeyPassword, _ := Decrypt(encryptedPassword, hex.EncodeToString(secretAsArray))
 	bKeystoreName, _ := Decrypt(encryptedKeystoreName, hex.EncodeToString(secretAsArray))
 
-	// fmt.Println(bValidatorKey, bValidatorKeyPassword, bKeystoreName)
 
 	return schemas.ValidatorKeyInfo{
 		ValidatorKeyFile:     bValidatorKey,

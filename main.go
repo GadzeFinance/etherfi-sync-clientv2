@@ -11,7 +11,8 @@ import (
 	"reflect"
 	"strconv"
 	"time"
-
+	"database/sql"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/utils"
 	"github.com/robfig/cron"
@@ -30,23 +31,55 @@ func main() {
 	fmt.Println("Starting Sync Client!")
 	fmt.Println("Configuration values: ")
 	fmt.Println(PrettyPrint(config))
-	c := cron.New()
-	c.AddFunc("1 * * * *", func() {
 
-		if err := cronjob(config); err != nil {
-			fmt.Printf("Error executing function: %s\n", err)
-			os.Exit(1)
+	db, err := sql.Open("sqlite3", "data.db")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer db.Close()
+
+		// Create the table if it doesn't exist
+	createTableQuery := `
+		CREATE TABLE IF NOT EXISTS winning_bids (
+			id STRING PRIMARY KEY,
+			pubkey TEXT,
+			password TEXT
+		);`
+	_, err = db.Exec(createTableQuery)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if len(os.Args) < 2 {
+		fmt.Println("Specify 'listen' or 'query' argument")
+		return
+	}
+
+	programType := os.Args[1]
+	if programType == "listen" {
+		c := cron.New()
+		c.AddFunc("*/1 * * * *", func() {
+	
+			if err := cronjob(config, db); err != nil {
+				fmt.Printf("Error executing function: %s\n", err)
+				os.Exit(1)
+			}
+		})
+	
+		c.Start()
+	
+		for {
+			time.Sleep(time.Second)
 		}
-	})
-
-	c.Start()
-
-	for {
-		time.Sleep(time.Second)
+	} else if programType == "query" {
+		fmt.Println("Getting file")
+	} else {
+		fmt.Println("Specify 'listen' or 'query' argument")
 	}
 }
 
-func cronjob(config schemas.Config) error {
+func cronjob(config schemas.Config, db *sql.DB) error {
 
 	privateKey, err := utils.ExtractPrivateKeysFromFS(config.PRIVATE_KEYS_FILE_LOCATION)
 	if err != nil {
@@ -60,16 +93,22 @@ func cronjob(config schemas.Config) error {
 	}
 
 	for i, bid := range bids {
-
-		// for test
-		// if i >= 1 {
-		// 	break
-		// }
-
 		_ = i
 
-		fmt.Println(`> start processing bid with id:` + bid.Id)
+		query := "SELECT COUNT(*) FROM winning_bids WHERE id = ?"
+		var count int
+		err = db.QueryRow(query, bid.Id).Scan(&count)
+		if err != nil {
+			fmt.Println("Error querying database")
+			return err
+		} 
 
+		if count > 0 {
+			continue
+		}
+
+		fmt.Println(`> start processing bid with id:` + bid.Id)
+		
 		validator := bid.Validator
 		ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
 
@@ -93,7 +132,7 @@ func cronjob(config schemas.Config) error {
 
 		// fmt.Println(PrettyPrint(keypairForIndex))
 		data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
-		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, config.CONSENSUS_FOLDER_LOCATION, config.ETHERFI_SC_CLIENT_LOCATION, data, bid.Id, validator.ValidatorPubKey); err != nil {
+		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, config.CONSENSUS_FOLDER_LOCATION, config.ETHERFI_SC_CLIENT_LOCATION, data, bid.Id, validator.ValidatorPubKey, db); err != nil {
 			return err
 		}
 	}
