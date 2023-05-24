@@ -43,15 +43,15 @@ type GQLResponseType struct {
 type BidType struct {
 	Id string `json:"id"`
 	BidderAddress string `json:"bidderAddress"`
-  	PubKeyIndex string `json:"pubKeyIndex"`
-  	Validator ValidatorType `json:"validator"`
+  PubKeyIndex string `json:"pubKeyIndex"`
+  Validator ValidatorType `json:"validator"`
 }
 
 type ValidatorType struct {
 	Id string `json:"id"`
 	Phase string `json:"phase"`
-  	IpfsHashForEncryptedValidatorKey string `json:"ipfsHashForEncryptedValidatorKey"`
-  	ValidatorPubKey string `json:"validatorPubKey"`        	
+  IpfsHashForEncryptedValidatorKey string `json:"ipfsHashForEncryptedValidatorKey"`
+  ValidatorPubKey string `json:"validatorPubKey"`        	
 }
 
 type DecryptedDataJSON struct {

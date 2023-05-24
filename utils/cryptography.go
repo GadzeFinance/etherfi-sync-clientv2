@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"strings"
-
+	"fmt"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	"github.com/ethereum/go-ethereum/crypto"
 	"golang.org/x/crypto/pbkdf2"
@@ -60,10 +60,26 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 	nodeOperatorSharedSecret, _ := curve.ScalarMult(receivedStakerPubKeyPoint.X, receivedStakerPubKeyPoint.Y, nodeOperatorPrivKey.Bytes())
 	secretAsArray := nodeOperatorSharedSecret.Bytes()
 
+	// For compatibility, if all three encrypted fields are in the form [iv]:[data], we decrypt them using CBC mode
+	isUsingCBC := false
+	if len(strings.Split(encryptedKeystoreName, ":")) == 2 && len(strings.Split(encryptedValidatorKey, ":")) == 2 && len(strings.Split(encryptedPassword, ":")) == 2 {
+		isUsingCBC = true
+	}
+
+	var bValidatorKey []byte
+	var bValidatorKeyPassword []byte
+	var bKeystoreName []byte
+
 	// Use the shared secret to decrypt encrypted data
-	bValidatorKey, _ := Decrypt(encryptedValidatorKey, hex.EncodeToString(secretAsArray))
-	bValidatorKeyPassword, _ := Decrypt(encryptedPassword, hex.EncodeToString(secretAsArray))
-	bKeystoreName, _ := Decrypt(encryptedKeystoreName, hex.EncodeToString(secretAsArray))
+	if isUsingCBC {
+		bValidatorKey, _ = DecryptCBC(encryptedValidatorKey, hex.EncodeToString(secretAsArray))
+		bValidatorKeyPassword, _ = DecryptCBC(encryptedPassword, hex.EncodeToString(secretAsArray))
+		bKeystoreName, _ = DecryptCBC(encryptedKeystoreName, hex.EncodeToString(secretAsArray))
+	} else {
+		bValidatorKey, _ = DecryptGCM(encryptedValidatorKey, hex.EncodeToString(secretAsArray))
+		bValidatorKeyPassword, _ = DecryptGCM(encryptedPassword, hex.EncodeToString(secretAsArray))
+		bKeystoreName, _ = DecryptGCM(encryptedKeystoreName, hex.EncodeToString(secretAsArray))
+	}
 
 	return schemas.ValidatorKeyInfo{
 		ValidatorKeyFile:     bValidatorKey,
@@ -73,7 +89,7 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 }
 
 
-func Decrypt(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) {
+func DecryptGCM(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) {
 	// Decode the encryption key
 	key, err := hex.DecodeString(ENCRYPTION_KEY)
 
@@ -106,7 +122,44 @@ func Decrypt(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) {
 	return plaintext, nil
 }
 
-func DecryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string) (schemas.DecryptedDataJSON, error) {
+func DecryptCBC(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) {
+	key, err := hex.DecodeString(ENCRYPTION_KEY)
+	if err != nil {
+		return nil, err
+	}
+	parts := strings.Split(encrypted_string, ":")
+	// the encrypted string should has the from [iv]:[ciphertext]
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("ciphertext is not a multiple of 16")
+	}
+	iv, err := hex.DecodeString(parts[0])
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode iv:", err)
+	}
+	ciphertext, _ := hex.DecodeString(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode ciphertext:", err)
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	if len(ciphertext) % aes.BlockSize != 0 {
+		return nil, fmt.Errorf("ciphertext is not a multiple of 16")
+	}
+	mode := cipher.NewCBCDecrypter(block, iv)
+	mode.CryptBlocks(ciphertext, ciphertext)
+	ciphertext = PKCS5UnPadding(ciphertext)
+	return ciphertext, nil
+}
+
+func PKCS5UnPadding(src []byte) []byte {
+	length := len(src)
+	unpadding := int(src[length-1])
+	return src[:(length - unpadding)]
+}
+
+func DecryptPrivateKeysGCM(privateKeys schemas.KeyStoreFile, privKeyPassword string) (schemas.DecryptedDataJSON, error) {
 	iv, err := hex.DecodeString(privateKeys.Iv)
 	if err != nil {
 		panic(err)
@@ -147,4 +200,55 @@ func DecryptPrivateKeys(privateKeys schemas.KeyStoreFile, privKeyPassword string
 	}
 
 	return decryptedDataJSON, nil
+}
+
+
+func DecryptPrivateKeysCBC(privateKeys schemas.KeyStoreFile, privKeyPassword string) (schemas.DecryptedDataJSON, error) {
+	iv, err := hex.DecodeString(privateKeys.Iv)
+	if err != nil {
+		panic(err)
+		return schemas.DecryptedDataJSON{}, err
+	}
+	salt, err := hex.DecodeString(privateKeys.Salt)
+	if err != nil {
+		panic(err)
+		return schemas.DecryptedDataJSON{}, err
+	}
+	ciphertext, err := hex.DecodeString(privateKeys.Data)
+	if err != nil {
+		panic(err)
+		return schemas.DecryptedDataJSON{}, err
+	}
+
+	key := pbkdf2.Key([]byte(privKeyPassword), salt, 100000, 32, sha256.New)
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+		return schemas.DecryptedDataJSON{}, err
+	}
+
+	mode := cipher.NewCBCDecrypter(block, iv)
+	mode.CryptBlocks(ciphertext, ciphertext)
+	decryptedData := PKCS5UnPadding(ciphertext)
+
+	// fmt.Println("decrypted:", PrettyPrint(decryptedData))
+
+	var decryptedDataJSON schemas.DecryptedDataJSON
+	err = json.Unmarshal(decryptedData, &decryptedDataJSON)
+	if err != nil {
+		panic(err)
+		return schemas.DecryptedDataJSON{}, err
+	}
+
+	// fmt.Println("json:", decryptedDataJSON)
+
+	return decryptedDataJSON, nil
+}
+
+
+// PrettyPrint to print struct in a readable way
+func PrettyPrint(i interface{}) string {
+	s, _ := json.MarshalIndent(i, "", "\t")
+	return string(s)
 }

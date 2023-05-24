@@ -56,7 +56,7 @@ func PKCS5Padding(ciphertext []byte, blockSize int, after int) []byte {
 
 func decrypt(encrypted_string string, ENCRYPTION_KEY string) (string, error) {
 	
-	key := []byte(ENCRYPTION_KEY)
+	key, _ := hex.DecodeString(ENCRYPTION_KEY)
 
 	parts := strings.Split(encrypted_string, ":")
 
@@ -77,11 +77,11 @@ func decrypt(encrypted_string string, ENCRYPTION_KEY string) (string, error) {
 	}
 
 	mode := cipher.NewCBCDecrypter(block, iv)
-	ciphertext = PKCS5UnPadding(ciphertext)
+
 	mode.CryptBlocks(ciphertext, ciphertext)
 	
-
-	fmt.Println(string(ciphertext))
+	ciphertext = PKCS5UnPadding(ciphertext)
+	fmt.Println("ciphertext:", string(ciphertext))
 	
 	return hex.EncodeToString(ciphertext), nil
 
@@ -90,7 +90,7 @@ func decrypt(encrypted_string string, ENCRYPTION_KEY string) (string, error) {
 // WARNING: NOT SURE IF THIS IS SECURE
 // PKCS5UnPadding pads a certain blob of data with necessary data to be used in AES block cipher
 func PKCS5UnPadding(src []byte) []byte {
-	length := len(src)
+	length := len(src)	
 	unpadding := int(src[length-1])
 
 	return src[:(length - unpadding)]
@@ -106,3 +106,12 @@ func PKCS5UnPadding(src []byte) []byte {
 // 	decrypt(en_string, key)
 
 // }
+
+func main() {
+
+	encrypted_text := "cf204df4fda7afccfa8ade4182062e25:9cc88a2cc9f8c6fab2eeec00ff71226d"
+	key := "024e4f86592f51fe8a92804dfc78c37859eb6a9d5b269612126c5c1112e62d59"
+
+	res, _ := decrypt(encrypted_text, key)
+	fmt.Println("res:", res)
+}

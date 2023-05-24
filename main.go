@@ -86,6 +86,12 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		return err
 	}
 
+	isUsingCBC := false
+	// For compatibility, if the authTag is empty, we know it's CBC mode
+	if privateKey.AuthTag == "" {
+		isUsingCBC = true
+	}
+
 	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
 	if err != nil {
 		fmt.Println("Error: ", err)
@@ -117,10 +123,16 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 			return err
 		}
 
-		validatorKey, err := utils.DecryptPrivateKeys(privateKey, config.PASSWORD)
+		var validatorKey schemas.DecryptedDataJSON
+		if isUsingCBC {
+			validatorKey, err = utils.DecryptPrivateKeysCBC(privateKey, config.PASSWORD)
+		} else {
+			validatorKey, err = utils.DecryptPrivateKeysGCM(privateKey, config.PASSWORD)
+		}
 		if err != nil {
 			return err
 		}
+		
 		pubKeyArray := validatorKey.PublicKeys
 		privKeyArray := validatorKey.PrivateKeys
 
