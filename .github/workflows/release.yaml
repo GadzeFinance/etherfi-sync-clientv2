@@ -7,16 +7,29 @@ on:
 
 jobs:
   release-linux-amd64:
-    name: release linux/amd64
+    name: Release linux/amd64
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: wangyoucao577/go-release-action@v1
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: linux
-        goarch: amd64
+      - name: Checkout code
+        uses: actions/checkout@v3
 
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: master
+          release_name: Release ${{ github.sha }}
+          draft: false
+          prerelease: false
+
+      - name: Build and Release Binary
+        uses: wangyoucao577/go-release-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          goos: linux
+          goarch: amd64
 # jobs:
 #   build:
 #     name: Build Go Release
