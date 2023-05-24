@@ -6,86 +6,98 @@ on:
       - master
 
 jobs:
-  build:
-    name: Build Go Release
+  release-linux-amd64:
+    name: release linux/amd64
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v2
-
-    - name: Set up Go
-      uses: actions/setup-go@v2
+    - uses: actions/checkout@v3
+    - uses: wangyoucao577/go-release-action@v1
       with:
-        go-version: 1.x  # Replace with your desired Go version
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        goos: linux
+        goarch: amd64
 
-    - name: Build for amd64
-      run: go build -o sync-client-amd64
+# jobs:
+#   build:
+#     name: Build Go Release
+#     runs-on: ubuntu-latest
 
-    - name: Archive amd64 Release
-      uses: actions/upload-artifact@v2
-      with:
-        name: sync-client-amd64
-        path: sync-client-amd64
+#     steps:
+#     - name: Checkout Repository
+#       uses: actions/checkout@v2
 
-    - name: Build for arm64
-      run: GOARCH=arm64 go build -o sync-client-arm64
+#     - name: Set up Go
+#       uses: actions/setup-go@v2
+#       with:
+#         go-version: 1.x  # Replace with your desired Go version
 
-    - name: Archive arm64 Release
-      uses: actions/upload-artifact@v2
-      with:
-        name: sync-client-arm64
-        path: sync-client-arm64
+#     - name: Build for amd64
+#       run: go build -o sync-client-amd64
 
-  release:
-    name: Create Release
-    needs: build
-    runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#     - name: Archive amd64 Release
+#       uses: actions/upload-artifact@v2
+#       with:
+#         name: sync-client-amd64
+#         path: sync-client-amd64
 
-    steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v2
+#     - name: Build for arm64
+#       run: GOARCH=arm64 go build -o sync-client-arm64
 
-    - name: Download Artifacts
-      uses: actions/download-artifact@v2
-      with:
-        name: sync-client-amd64
-        path: sync-client-amd64
+#     - name: Archive arm64 Release
+#       uses: actions/upload-artifact@v2
+#       with:
+#         name: sync-client-arm64
+#         path: sync-client-arm64
 
-    - name: Download Artifacts
-      uses: actions/download-artifact@v2
-      with:
-        name: sync-client-arm64
-        path: sync-client-arm64
+#   release:
+#     name: Create Release
+#     needs: build
+#     runs-on: ubuntu-latest
+#     env:
+#       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      with:
-        tag_name: v1.0.0  # Replace with the desired release tag
-        release_name: Release v1.0.0  # Replace with the desired release name
-        body: |
-          Release v1.0.0
+#     steps:
+#     - name: Checkout Repository
+#       uses: actions/checkout@v2
 
-          Add release notes and description here.
+#     - name: Download Artifacts
+#       uses: actions/download-artifact@v2
+#       with:
+#         name: sync-client-amd64
+#         path: ./
 
-    - name: Display structure of downloaded files
-      run: ls -R
+#     - name: Download Artifacts
+#       uses: actions/download-artifact@v2
+#       with:
+#         name: sync-client-arm64
+#         path: ./
 
-    - name: Upload Artifacts
-      uses: actions/upload-release-asset@v1
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./
-        asset_name: sync-client-amd64
-        asset_content_type: application/octet-stream
+#     - name: Create Release
+#       id: create_release
+#       uses: actions/create-release@v1
+#       with:
+#         tag_name: v1.0.0  # Replace with the desired release tag
+#         release_name: Release v1.0.0  # Replace with the desired release name
+#         body: |
+#           Release v1.0.0
 
-    - name: Upload Artifacts
-      uses: actions/upload-release-asset@v1
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./
-        asset_name: sync-client-arm64
-        asset_content_type: application/octet-stream
+#           Add release notes and description here.
+
+#     - name: Display structure of downloaded files
+#       run: ls -R
+
+#     - name: Upload Artifacts
+#       uses: actions/upload-release-asset@v1
+#       with:
+#         upload_url: ${{ steps.create_release.outputs.upload_url }}
+#         asset_path: ./
+#         asset_name: sync-client-amd64
+#         asset_content_type: application/octet-stream
+
+#     - name: Upload Artifacts
+#       uses: actions/upload-release-asset@v1
+#       with:
+#         upload_url: ${{ steps.create_release.outputs.upload_url }}
+#         asset_path: ./
+#         asset_name: sync-client-arm64
+#         asset_content_type: application/octet-stream
