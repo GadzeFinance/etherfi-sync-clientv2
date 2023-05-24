@@ -21,6 +21,7 @@ type KeyStoreFile struct {
 	Iv string `json:"iv"`
 	Salt string `json:"salt"`
 	Data string `json:"data"`
+	AuthTag string `json:"authTag`
 	EtherfiDesktopAppVersion string `json:"etherfiDesktopAppVersion"`
 }
 
@@ -42,15 +43,15 @@ type GQLResponseType struct {
 type BidType struct {
 	Id string `json:"id"`
 	BidderAddress string `json:"bidderAddress"`
-  	PubKeyIndex string `json:"pubKeyIndex"`
-  	Validator ValidatorType `json:"validator"`
+  PubKeyIndex string `json:"pubKeyIndex"`
+  Validator ValidatorType `json:"validator"`
 }
 
 type ValidatorType struct {
 	Id string `json:"id"`
 	Phase string `json:"phase"`
-  	IpfsHashForEncryptedValidatorKey string `json:"ipfsHashForEncryptedValidatorKey"`
-  	ValidatorPubKey string `json:"validatorPubKey"`        	
+  IpfsHashForEncryptedValidatorKey string `json:"ipfsHashForEncryptedValidatorKey"`
+  ValidatorPubKey string `json:"validatorPubKey"`        	
 }
 
 type DecryptedDataJSON struct {

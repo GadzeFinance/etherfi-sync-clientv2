@@ -86,6 +86,12 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		return err
 	}
 
+	isUsingCBC := false
+	// For compatibility, if the authTag is empty, we know it's CBC mode
+	if privateKey.AuthTag == "" {
+		isUsingCBC = true
+	}
+
 	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
 	if err != nil {
 		fmt.Println("Error: ", err)
@@ -117,31 +123,37 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 			return err
 		}
 
-		validatorKey, err := utils.DecryptPrivateKeys(privateKey, config.PASSWORD)
+		var validatorKey schemas.DecryptedDataJSON
+		if isUsingCBC {
+			validatorKey, err = utils.DecryptPrivateKeysCBC(privateKey, config.PASSWORD)
+		} else {
+			validatorKey, err = utils.DecryptPrivateKeysGCM(privateKey, config.PASSWORD)
+		}
 		if err != nil {
 			return err
 		}
+		
 		pubKeyArray := validatorKey.PublicKeys
 		privKeyArray := validatorKey.PrivateKeys
 
-		keypairForIndex, err := getKeyPairByPubKeyIndex(bid.PubKeyIndex, pubKeyArray, privKeyArray)
+		keypairForIndex, err := getKeyPairByPubKeyIndex(bid.PubKeyIndex, privKeyArray, pubKeyArray)
 
 		if err != nil {
 			return err
 		}
 
-		// fmt.Println(PrettyPrint(keypairForIndex))
 		data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
+		
 		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, config.CONSENSUS_FOLDER_LOCATION, config.ETHERFI_SC_CLIENT_LOCATION, data, bid.Id, validator.ValidatorPubKey, db); err != nil {
 			return err
 		}
+
 	}
 
 	return nil
 }
 
 func getKeyPairByPubKeyIndex(pubkeyIndexString string, privateKeys []string, publicKeys []string) (schemas.KeyPair, error) {
-	//fmt.Println("index:", pubkeyIndexString)
 	index, err := strconv.ParseInt(pubkeyIndexString, 10, 0)
 	if err != nil {
 		return schemas.KeyPair{}, err
