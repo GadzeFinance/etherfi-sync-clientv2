@@ -45,8 +45,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./etherfi-sync-client-linux-amd64.tar.gzip
-          asset_name: etherfi-sync-client-linux-amd64.tar.gzip
+          asset_path: ./etherfi-sync-client-linux-amd64.tar.gz
+          asset_name: etherfi-sync-client-linux-amd64.tar.gz
           asset_content_type: application/tar+gzip
 
       # - name: Upload Binary to Release
