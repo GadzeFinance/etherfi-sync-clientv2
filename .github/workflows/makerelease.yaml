@@ -31,6 +31,9 @@ jobs:
   
       - name: Build Go Application
         run: GOOS=linux GOARCH=amd64 go build -o etherfi-sync-client-linux-amd64
+        
+      - name: Print everything out
+        run: ls
 
       - name: Upload Binary to Release
         env:
