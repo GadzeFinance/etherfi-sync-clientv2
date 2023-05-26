@@ -24,19 +24,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v1.0.1
-          release_name: v1.0.1
+          tag_name: v1.0.2
+          release_name: v1.0.2
           draft: false
           prerelease: false
   
       - name: Build Go Application
-        run: GOOS=linux GOARCH=amd64 go build -o etherfi-sync-client-linux-amd64
+        run: GOOS=linux GOARCH=arm64 go build -o etherfi-sync-client-linux-arm64
 
       - name: Print everything out
         run: ls
 
       - name: Zip it!
-        run: tar -czvf etherfi-sync-client-linux-amd64.tar.gz -C . etherfi-sync-client-linux-amd64
+        run: tar -czvf etherfi-sync-client-linux-arm64.tar.gz -C . etherfi-sync-client-linux-arm64
 
       - name: Upload Release Asset
         id: upload-release-asset 
@@ -45,8 +45,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./etherfi-sync-client-linux-amd64.tar.gz
-          asset_name: etherfi-sync-client-linux-amd64.tar.gz
+          asset_path: ./etherfi-sync-client-linux-arm64.tar.gz
+          asset_name: etherfi-sync-client-linux-arm64.tar.gz
           asset_content_type: application/tar+gzip
 
       # - name: Upload Binary to Release
@@ -55,5 +55,5 @@ jobs:
       #   run: |
       #     curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
       #       -H "Content-Type: application/octet-stream" \
-      #       --data-binary "@etherfi-sync-client-linux-amd64" \
+      #       --data-binary "@etherfi-sync-client-linux-arm64" \
       #       "${{ steps.create_release.outputs.upload_url }}?name=etherfi-sync-client"
