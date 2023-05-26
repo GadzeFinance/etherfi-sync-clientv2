@@ -31,7 +31,7 @@ jobs:
   
       - name: Build Go Application
         run: GOOS=linux GOARCH=amd64 go build -o etherfi-sync-client-linux-amd64
-        
+
       - name: Upload Binary to Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -39,4 +39,4 @@ jobs:
           curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
             -H "Content-Type: application/octet-stream" \
             --data-binary "@etherfi-sync-client-linux-amd64" \
-            "${{ steps.create_release.outputs.release_url }}/assets?name=etherfi-sync-client-linux-amd64"
+            "${{ steps.create_release.outputs.upload_url }}/assets?name=etherfi-sync-client-linux-amd64"
