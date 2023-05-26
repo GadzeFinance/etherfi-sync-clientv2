@@ -36,7 +36,7 @@ jobs:
         run: ls
 
       - name: Zip it!
-        run: zip --junk-paths etherfi-sync-client-linux-amd64
+        run: tar -czvf etherfi-sync-client-linux-amd64.tar.gz -C . etherfi-sync-client-linux-amd64
 
       - name: Upload Release Asset
         id: upload-release-asset 
@@ -45,9 +45,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./etherfi-sync-client-linux-amd64.zip
-          asset_name: etherfi-sync-client-linux-amd64.zip
-          asset_content_type: application/zip
+          asset_path: ./etherfi-sync-client-linux-amd64.tar.gzip
+          asset_name: etherfi-sync-client-linux-amd64.tar.gzip
+          asset_content_type: application/tar+gzip
 
       # - name: Upload Binary to Release
       #   env:
