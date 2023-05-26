@@ -39,4 +39,4 @@ jobs:
           curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
             -H "Content-Type: application/octet-stream" \
             --data-binary "@etherfi-sync-client-linux-amd64" \
-            "${{ steps.create_release.outputs.upload_url }}/assets?name=etherfi-sync-client-linux-amd64"
+            "${{ steps.create_release.outputs.upload_url }}"
