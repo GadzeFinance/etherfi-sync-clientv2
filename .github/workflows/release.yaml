@@ -1,32 +1,36 @@
-name: Build and Release
+name: Release
 
 on:
   push:
     branches:
-      - master
+      - main  # Adjust the branch name if necessary
 
 jobs:
-  release-linux-amd64:
-    name: Release linux/amd64
+  release:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Build and package
+        run: |
+          go build -o myprogram -ldflags="-s -w" ./main.go
+          tar -czvf myprogram_linux_amd64.tar.gz myprogram
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+        uses: wangyoucao577/go-release-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v1.0.1
-          release_name: Release v1.0.1
-          draft: false
-          prerelease: false
-
-      - name: Build and Release Binary
-        uses: wangyoucao577/go-release-action@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            myprogram_linux_amd64.tar.gz
+          tagName: v1.0.0  # Replace with your desired tag name
+          releaseTitle: Release v1.0.0
           goos: linux
-          goarch: amd64
+          goarch: amd64 
