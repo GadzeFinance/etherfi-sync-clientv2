@@ -18,20 +18,20 @@ jobs:
         with:
           go-version: '1.17'
 
-      - name: Build Go Application
-        run: GOOS=linux GOARCH=amd64 go build -o etherfi-sync-client-linux-amd64
-
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: master
+          tag_name: v1.0.1
           release_name: v1.0.1
           draft: false
           prerelease: false
   
+      - name: Build Go Application
+        run: GOOS=linux GOARCH=amd64 go build -o etherfi-sync-client-linux-amd64
+        
       - name: Upload Binary to Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
