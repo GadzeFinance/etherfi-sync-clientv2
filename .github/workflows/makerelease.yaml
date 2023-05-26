@@ -1,0 +1,44 @@
+name: Create Release with Binary
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  create_release_with_binary:
+    name: Create Release with Binary
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.17'
+
+      - name: Build Go Application
+        run: GOOS=linux GOARCH=amd64 go build -o etherfi-sync-client-linux-amd64
+
+      - name: Create Release
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag ${{ github.ref }}-release
+          git push --tags
+          |
+          echo "::set-output name=tag_name::${{ github.ref }}-release"
+          echo "::set-output name=release_url::$(curl -s -H \"Authorization: token $GITHUB_TOKEN\" \"https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.ref }}-release\" | jq -r '.url')"
+
+      - name: Upload Binary to Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@etherfi-sync-client-linux-amd64" \
+            "${{ steps.create_release.outputs.release_url }}/assets?name=etherfi-sync-client-linux-amd64"
