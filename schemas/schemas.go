@@ -63,3 +63,9 @@ type KeyPair struct {
 	PublicKey string `json:"publicKey"`
 	PrivateKey string `json:"privateKey"`
 }
+
+type WinningBids struct {
+	Id string `json:"publicKey"`
+	Pubkey string `json:"publicKey"`
+	Password string `json:"publicKey"`
+}

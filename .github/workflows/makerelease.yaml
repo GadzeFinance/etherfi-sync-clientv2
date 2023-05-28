@@ -30,7 +30,7 @@ jobs:
           prerelease: false
   
       - name: Build Go Application
-        run: GOOS=linux GOARCH=arm64 go build -o etherfi-sync-client-linux-arm64
+        run: CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -o etherfi-sync-client-linux-arm64
 
       - name: Print everything out
         run: ls

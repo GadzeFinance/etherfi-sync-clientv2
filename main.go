@@ -73,6 +73,43 @@ func main() {
 			time.Sleep(time.Second)
 		}
 	} else if programType == "query" {
+
+		fmt.Println("Querying!")
+		data := []schemas.WinningBids{}
+		query := "SELECT * FROM winning_bids"
+		row, err := db.Query(query)
+		if err != nil {
+			fmt.Println("Error querying database")
+			return
+		} 
+
+		fmt.Println(row)
+
+		defer row.Close()
+		for row.Next() { // Iterate and fetch the records from result cursor
+
+			var id string
+			var pubkey string
+			var password string
+			row.Scan(&id, &pubkey, &password)
+			fmt.Println(password)
+
+			data = append(data, schemas.WinningBids{
+				Id: id,
+				Pubkey: pubkey,
+				Password: password,
+			})
+			fmt.Println(data)
+		}
+		dataInJson, err := json.MarshalIndent(row, "", "  ")
+		if err != nil {
+			fmt.Println("Error formatting data: ", err)
+		}
+
+		fmt.Println(dataInJson)
+
+
+
 		fmt.Println("Getting file")
 	} else {
 		fmt.Println("Specify 'listen' or 'query' argument")
@@ -93,6 +130,8 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 	}
 
 	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
+	
+	fmt.Println(bids)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return err

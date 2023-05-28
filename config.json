@@ -1,6 +1,6 @@
 {
-	"GRAPH_URL": "https://api.studio.thegraph.com/proxy/41778/etherfi-goerli/0.0.1",
-	"BIDDER": "0xef545097fdcfd24add3ba7652d238acbde825ff7",
+	"GRAPH_URL": "https://api.studio.thegraph.com/query/41778/goerli-dressrehearsal-1/0.0.6",
+	"BIDDER": "0xEF545097fdcfd24adD3ba7652D238acbDE825ff7",
   "PRIVATE_KEYS_FILE_LOCATION": "./privateEtherfiKeystore-1684872754180.json",
   "OUTPUT_LOCATION": "output",
   "PASSWORD": "Password123!",
@@ -8,3 +8,4 @@
   "CONSENSUS_FOLDER_LOCATION": ".",
   "ETHERFI_SC_CLIENT_LOCATION": "."
 }
+
