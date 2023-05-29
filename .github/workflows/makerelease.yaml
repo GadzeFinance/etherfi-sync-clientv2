@@ -21,7 +21,7 @@ jobs:
       - name: Install GCC
         run: |
           sudo apt-get update &&
-          sudo apt-get install build-install
+          sudo apt-get install gcc
           gcc --version
 
       - name: Build Go Application
