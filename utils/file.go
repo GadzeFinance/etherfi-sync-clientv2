@@ -72,7 +72,7 @@ func SaveKeysToFS(output_location string, consensus_location string, client_loca
 		return err
 	}
 
-	query := "INSERT INTO winning_bids (id, pubkey, password) VALUES (?, ?, ?)"
+	query := "REPLACE INTO winning_bids (id, pubkey, password) VALUES (?, ?, ?)"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		log.Fatal(err)

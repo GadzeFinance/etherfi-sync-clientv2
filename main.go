@@ -59,7 +59,7 @@ func main() {
 	programType := os.Args[1]
 	if programType == "listen" {
 		c := cron.New()
-		c.AddFunc("*/1 * * * *", func() {
+		c.AddFunc("1 * * * *", func() {
 	
 			if err := cronjob(config, db); err != nil {
 				fmt.Printf("Error executing function: %s\n", err)
@@ -74,43 +74,46 @@ func main() {
 		}
 	} else if programType == "query" {
 
-		fmt.Println("Querying!")
-		data := []schemas.WinningBids{}
-		query := "SELECT * FROM winning_bids"
-		row, err := db.Query(query)
+		rows, err := db.Query("SELECT * FROM winning_bids")
 		if err != nil {
-			fmt.Println("Error querying database")
+			fmt.Println("Error querying database:", err)
 			return
-		} 
-
-		fmt.Println(row)
-
-		defer row.Close()
-		for row.Next() { // Iterate and fetch the records from result cursor
-
-			var id string
-			var pubkey string
-			var password string
-			row.Scan(&id, &pubkey, &password)
-			fmt.Println(password)
-
-			data = append(data, schemas.WinningBids{
-				Id: id,
-				Pubkey: pubkey,
-				Password: password,
-			})
-			fmt.Println(data)
 		}
-		dataInJson, err := json.MarshalIndent(row, "", "  ")
+		defer rows.Close()
+	
+		var data []schemas.WinningBids
+	
+		for rows.Next() {
+			var bid schemas.WinningBids
+			err := rows.Scan(&bid.Id, &bid.Pubkey, &bid.Password)
+			if err != nil {
+				fmt.Println("Error scanning row:", err)
+				continue
+			}
+			data = append(data, bid)
+		}
+	
+		jsonData, err := json.Marshal(data)
 		if err != nil {
-			fmt.Println("Error formatting data: ", err)
+			fmt.Println("Error formatting data:", err)
+			return
 		}
-
-		fmt.Println(dataInJson)
-
-
-
-		fmt.Println("Getting file")
+	
+		file, err := os.Create("output.json")
+		if err != nil {
+			fmt.Println("Error creating file:", err)
+			return
+		}
+		defer file.Close()
+	
+		_, err = file.Write(jsonData)
+		if err != nil {
+			fmt.Println("Error writing to file:", err)
+			return
+		}
+	
+		fmt.Println("Data written to output.json successfully.")
+		
 	} else {
 		fmt.Println("Specify 'listen' or 'query' argument")
 	}
@@ -131,7 +134,6 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 
 	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
 	
-	fmt.Println(bids)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return err
