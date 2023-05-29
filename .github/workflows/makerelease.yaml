@@ -19,7 +19,12 @@ jobs:
           go-version: '1.17'
 
       - name: Build Go Application
-        run: GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=arm64 GOPROXY=https://goproxy.cn,direct go build -o etherfi-sync-client-linux-arm64
+        run: |
+          sudo apt-get install gcc-aarch64-linux-gnu
+          sudo dpkg --add-architecture arm64
+          sudo apt update
+          sudo apt install libsqlite3-dev:arm64
+          GOOS=linux GOARCH=arm64 go build -o etherfi-sync-client-linux-arm64
 
       - name: Create Release
         id: create_release
