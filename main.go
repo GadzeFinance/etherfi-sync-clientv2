@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/glebarez/go-sqlite"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/utils"
 	"github.com/robfig/cron"
@@ -32,7 +32,7 @@ func main() {
 	fmt.Println("Configuration values: ")
 	fmt.Println(PrettyPrint(config))
 
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite", "data.db")
 	if err != nil {
 		fmt.Println(err)
 	}
