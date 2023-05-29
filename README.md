@@ -15,7 +15,8 @@ The Etherfi Sync Client is a tool designed to simplify the process of accessing 
   "PASSWORD": "<password used when generating the keys with the desktop app>",
   "IPFS_GATEWAY": "<IPFS gateway URL>",
   "CONSENSUS_FOLDER_LOCATION": "<folder location to consensus/validator_keys>",
-	"ETHERFI_SC_CLIENT_LOCATION": "<location to prysm client folder>"
+	"ETHERFI_SC_CLIENT_LOCATION": "<location to prysm client folder>",
+  "PATH_TO_PRYSYM_SH": "<folder path to the ./prysym.sh file>"
 }
 ```
 > Note: Make sure to replace the placeholder values with your own information.

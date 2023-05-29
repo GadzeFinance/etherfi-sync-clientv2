@@ -9,7 +9,7 @@ type Config struct {
 	IPFS_GATEWAY string `json:"IPFS_GATEWAY"`
 	CONSENSUS_FOLDER_LOCATION string `json:"CONSENSUS_FOLDER_LOCATION"`
 	ETHERFI_SC_CLIENT_LOCATION string `json:"ETHERFI_SC_CLIENT_LOCATION"`
-	PATH_TO_PRYSYM_SH string `json:"ETHERFI_SC_CLIENT_LOCATION"`
+	PATH_TO_PRYSYM_SH string `json:"PATH_TO_PRYSYM_SH"`
 }
 
 type ValidatorKeyInfo struct {
