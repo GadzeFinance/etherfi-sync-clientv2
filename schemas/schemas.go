@@ -9,6 +9,7 @@ type Config struct {
 	IPFS_GATEWAY string `json:"IPFS_GATEWAY"`
 	CONSENSUS_FOLDER_LOCATION string `json:"CONSENSUS_FOLDER_LOCATION"`
 	ETHERFI_SC_CLIENT_LOCATION string `json:"ETHERFI_SC_CLIENT_LOCATION"`
+	PATH_TO_PRYSYM_SH string `json:"ETHERFI_SC_CLIENT_LOCATION"`
 }
 
 type ValidatorKeyInfo struct {
@@ -62,10 +63,4 @@ type DecryptedDataJSON struct {
 type KeyPair struct {
 	PublicKey string `json:"publicKey"`
 	PrivateKey string `json:"privateKey"`
-}
-
-type WinningBids struct {
-	Id string `json:"publicKey"`
-	Pubkey string `json:"publicKey"`
-	Password string `json:"publicKey"`
 }

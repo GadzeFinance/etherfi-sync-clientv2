@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strconv"
 	"time"
+	"os/exec"
 	"database/sql"
 	_ "github.com/glebarez/go-sqlite"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
@@ -52,7 +53,7 @@ func main() {
 	}
 
 	if len(os.Args) < 2 {
-		fmt.Println("Specify 'listen' or 'query' argument")
+		fmt.Println("Specify 'listen' or 'add' argument")
 		return
 	}
 
@@ -72,50 +73,47 @@ func main() {
 		for {
 			time.Sleep(time.Second)
 		}
-	} else if programType == "query" {
+	} else if programType == "add" {
 
-		rows, err := db.Query("SELECT * FROM winning_bids")
-		if err != nil {
-			fmt.Println("Error querying database:", err)
+		if len(os.Args) < 3 {
+			fmt.Println("Specify the bid id argument")
 			return
 		}
-		defer rows.Close()
-	
-		var data []schemas.WinningBids
-	
-		for rows.Next() {
-			var bid schemas.WinningBids
-			err := rows.Scan(&bid.Id, &bid.Pubkey, &bid.Password)
-			if err != nil {
-				fmt.Println("Error scanning row:", err)
-				continue
-			}
-			data = append(data, bid)
-		}
-	
-		jsonData, err := json.Marshal(data)
+
+		bidId := os.Args[2]
+
+
+		query := "SELECT COUNT(*) FROM winning_bids WHERE id = ?"
+		var count int
+		err = db.QueryRow(query, bidId).Scan(&count)
 		if err != nil {
-			fmt.Println("Error formatting data:", err)
+			fmt.Println("Error querying database")
+			return
+		} 
+
+		if count == 0 {
+			fmt.Println("No bids with the ID specified")
 			return
 		}
-	
-		file, err := os.Create("output.json")
-		if err != nil {
-			fmt.Println("Error creating file:", err)
-			return
-		}
-		defer file.Close()
-	
-		_, err = file.Write(jsonData)
-		if err != nil {
-			fmt.Println("Error writing to file:", err)
-			return
-		}
-	
-		fmt.Println("Data written to output.json successfully.")
+
+		out, err := exec.Command(
+			"sudo",
+			config.PATH_TO_PRYSYM_SH,
+			"validator",
+			"accounts",
+			"import",
+			"--goerli",
+			"--wallet-dir=" + config.CONSENSUS_FOLDER_LOCATION,
+			"--keys-dir=" + config.ETHERFI_SC_CLIENT_LOCATION).Output()
 		
+		if err != nil {
+			fmt.Println(err)
+		}
+	
+		fmt.Println(out)
+
 	} else {
-		fmt.Println("Specify 'listen' or 'query' argument")
+		fmt.Println("Specify 'listen' or 'add' argument")
 	}
 }
 

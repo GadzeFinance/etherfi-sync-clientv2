@@ -84,18 +84,6 @@ func SaveKeysToFS(output_location string, consensus_location string, client_loca
 		log.Fatal(err)
 	}
 
-	// Step 2: Create an easy to run script (not sure if we need to do this)
-	bashHeader := "#!/bin/bash -xe \n"
-	echoLine := fmt.Sprintf("echo \"Adding keystore to prysm for validator with pubkey:%s ...\" \n", validatorPublicKey[:10])
-	changeDirLine := fmt.Sprintf("cd %s \n", consensus_location)
-	keysDir := filepath.Join(client_location, "storage", "output", bidId, string(validatorInfo.KeystoreName))
-
-	prysmCommand := fmt.Sprintf("sudo ./prysm.sh validator accounts import --goerli --wallet-dir=%s --keys-dir=%s", consensus_location, keysDir)
-	scriptContent := fmt.Sprintf("%s %s %s %s", bashHeader, echoLine, changeDirLine, prysmCommand)
-	if err := createFile(filepath.Join(bidPath, "add.sh"), scriptContent); err != nil {
-		return err
-	}
-
 	return nil
 }
 

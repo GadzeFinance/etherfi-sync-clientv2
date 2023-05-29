@@ -6,5 +6,6 @@
 	"PASSWORD": "$M00THOp3rat0R",
 	"IPFS_GATEWAY": "https://etherfi-goerli.infura-ipfs.io/ipfs",
 	"CONSENSUS_FOLDER_LOCATION": ".",
-	"ETHERFI_SC_CLIENT_LOCATION": "."
+	"ETHERFI_SC_CLIENT_LOCATION": ".",
+  "PATH_TO_PRYSYM_SH": "../prysm.sh"
 }
