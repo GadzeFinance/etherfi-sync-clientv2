@@ -18,13 +18,14 @@ jobs:
         with:
           go-version: '1.17'
 
-      - name: Build Go Application
+      - name: Install GCC
         run: |
-          sudo apt-get install gcc-aarch64-linux-gnu
-          sudo dpkg --add-architecture arm64
           sudo apt update
-          sudo apt install libsqlite3-dev:arm64
-          GOOS=linux GOARCH=arm64 go build -o etherfi-sync-client-linux-arm64
+          sudo apt install build-install
+          gcc --version
+
+      - name: Build Go Application
+        run: GOOS=linux GOARCH=arm64 go build -o etherfi-sync-client-linux-arm64
 
       - name: Create Release
         id: create_release
