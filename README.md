@@ -1,12 +1,30 @@
 # Etherfi Sync Client
 The Etherfi Sync Client is a tool designed to simplify the process of accessing validator keys for Node Operators who have won auctions. The client periodically queries the graph to detect any won auctions and imports the required information for validator key password, validator public key, validator key file, and a script to import the account to prysm.
 
-## How to Use
-1. Create a new folder to store the program.
-2. Download the latest binary release from GitHub by navigating to the Etherfi Sync Client repository and selecting the appropriate release.
-3. Move the binary into the folder created
-4. Create a config.json file in the same folder with the following contents:
+## Setup
+On remote computer, make directory for sync client and curl the executable from url:  https://github.com/GadzeFinance/etherfi-sync-clientv2/releases
+```shell
+# create directory and go inside it
+mkdir sync-client
+cd sync-client
+
+# grab the executable from github
+curl -LJO https://github.com/GadzeFinance/etherfi-sync-clientv2/releases/download/v1.0.2/etherfi-sync-client-linux-arm64.tar.gz 
+
+# unpack the executable
+tar -xf etherfi-sync-client-linux-arm64.tar.gz
+
+# make a new output directory for stake bids that have been won
+mkdir output
+
+# create configuration file
+touch config.json
+
+# edit the configuration file based on the config.json from here:
+# https://github.com/GadzeFinance/etherfi-sync-clientv2/blob/master/config.json
+```
 ```json
+// Example config.json
 {
   "GRAPH_URL": "<Dev URL>",
   "BIDDER": "<ETH Address used in the web UI to create bids>",
@@ -19,9 +37,12 @@ The Etherfi Sync Client is a tool designed to simplify the process of accessing 
   "PATH_TO_PRYSYM_SH": "<folder path to the ./prysym.sh file>"
 }
 ```
+
+## How to Use
 > Note: Make sure to replace the placeholder values with your own information.
-5. Run `./etherfi-sync-clientv2`
-6. If any configuration values are missing, the program may prompt you to enter them.
+1. Run listener: `./etherfi-sync-clientv2 listen`
+2. Run add key to prsym:  `./etherfi-sync-clientv2 add <bidder id>`
+3. If any configuration values are missing, the program may prompt you to enter them.
 
 That's it! The Etherfi Sync Client will now automatically query the graph for any won auctions and import the necessary information for prysm.
 
