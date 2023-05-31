@@ -44,7 +44,8 @@ func main() {
 		CREATE TABLE IF NOT EXISTS winning_bids (
 			id STRING PRIMARY KEY,
 			pubkey TEXT,
-			password TEXT
+			password TEXT,
+			executed BOOLEAN DEFAULT false
 		);`
 	_, err = db.Exec(createTableQuery)
 	if err != nil {
@@ -96,6 +97,37 @@ func main() {
 			return
 		}
 
+		stmt, err := db.Prepare("SELECT executed FROM winning_bids WHERE id = ?")
+		if err != nil {
+			fmt.Println("Error preparing statement:", err)
+			return
+		}
+		defer stmt.Close()
+		
+		var executed bool
+		err = stmt.QueryRow(bidId).Scan(&executed)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				fmt.Println("No row found with the specified ID")
+			} else {
+				fmt.Println("Error retrieving data:", err)
+			}
+			return
+		}
+
+		if executed {
+			fmt.Println("These keys have already been added. Ending program")
+			return
+		}
+
+		updateStmt, err := db.Prepare("UPDATE winning_bids SET executed = true WHERE id = ?")
+		if err != nil {
+			fmt.Println("Error preparing UPDATE statement:", err)
+			return
+		}
+		defer updateStmt.Close()
+
+
 		out, err := exec.Command(
 			"sudo",
 			config.PATH_TO_PRYSYM_SH,
@@ -103,14 +135,23 @@ func main() {
 			"accounts",
 			"import",
 			"--goerli",
-			"--wallet-dir=" + config.CONSENSUS_FOLDER_LOCATION,
-			"--keys-dir=" + config.ETHERFI_SC_CLIENT_LOCATION).Output()
+			"--wallet-dir=",
+			config.CONSENSUS_FOLDER_LOCATION,
+			"--keys-dir=",
+			config.ETHERFI_SC_CLIENT_LOCATION).Output()
+
 		
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-	
+
+		_, err = updateStmt.Exec(bidId)
+		if err != nil {
+			fmt.Println("Error updating data:", err)
+			return
+		}
+
 		fmt.Println(out)
 
 	} else {
