@@ -4,7 +4,7 @@ The Etherfi Sync Client is a tool designed to simplify the process of accessing 
 ## Setup
 On remote computer, make directory for sync client and curl the executable from url:  https://github.com/GadzeFinance/etherfi-sync-clientv2/releases
 ```shell
-# create directory and go to
+# create directory and go inside it
 mkdir sync-client
 cd sync-client
 
@@ -22,16 +22,9 @@ touch config.json
 
 # edit the configuration file based on the config.json from here:
 # https://github.com/GadzeFinance/etherfi-sync-clientv2/blob/master/config.json
-
 ```
-
-
-## How to Use
-1. Create a new folder to store the program.
-2. Download the latest binary release from GitHub by navigating to the Etherfi Sync Client repository and selecting the appropriate release.
-3. Move the binary into the folder created
-4. Create a config.json file in the same folder with the following contents:
 ```json
+// Example config.json
 {
   "GRAPH_URL": "<Dev URL>",
   "BIDDER": "<ETH Address used in the web UI to create bids>",
@@ -44,10 +37,12 @@ touch config.json
   "PATH_TO_PRYSYM_SH": "<folder path to the ./prysym.sh file>"
 }
 ```
+
+## How to Use
 > Note: Make sure to replace the placeholder values with your own information.
-5. Run listener: `./etherfi-sync-clientv2 listen`
-6. Run add key to prsym:  `./etherfi-sync-clientv2 add <bidder id>`
-7. If any configuration values are missing, the program may prompt you to enter them.
+1. Run listener: `./etherfi-sync-clientv2 listen`
+2. Run add key to prsym:  `./etherfi-sync-clientv2 add <bidder id>`
+3. If any configuration values are missing, the program may prompt you to enter them.
 
 That's it! The Etherfi Sync Client will now automatically query the graph for any won auctions and import the necessary information for prysm.
 
