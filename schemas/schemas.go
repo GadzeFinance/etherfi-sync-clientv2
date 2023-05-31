@@ -53,7 +53,8 @@ type ValidatorType struct {
 	Phase string `json:"phase"`
 	IpfsHashForEncryptedValidatorKey string `json:"ipfsHashForEncryptedValidatorKey"`
 	ValidatorPubKey string `json:"validatorPubKey"`
-	EtherfiNode string `json:"etherfiNode"`    	
+	EtherfiNode string `json:"etherfiNode"`
+	BNFTHolder string `json:"BNFTHolder"`   	
 }
 
 type DecryptedDataJSON struct {

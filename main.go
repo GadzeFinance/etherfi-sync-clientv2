@@ -162,6 +162,8 @@ func main() {
 
 func cronjob(config schemas.Config, db *sql.DB) error {
 
+	fmt.Println("Searching for new stake requests 👀")
+
 	privateKey, err := utils.ExtractPrivateKeysFromFS(config.PRIVATE_KEYS_FILE_LOCATION)
 	if err != nil {
 		return err
@@ -195,9 +197,8 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 			continue
 		}
 
-		fmt.Println("BID ADDRESS: ", bid.Validator.EtherfiNode)
 
-		fmt.Println(`> start processing bid with id:` + bid.Id)
+		fmt.Println(`> start processing stake request from: ` + bid.Validator.BNFTHolder)
 		
 		validator := bid.Validator
 		ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
@@ -310,6 +311,7 @@ func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string) ([]schemas.BidTyp
 				ipfsHashForEncryptedValidatorKey
 				validatorPubKey
 				etherfiNode
+				BNFTHolder
         	}
       	}
     	}`,
