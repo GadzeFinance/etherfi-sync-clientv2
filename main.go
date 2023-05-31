@@ -45,6 +45,7 @@ func main() {
 			id STRING PRIMARY KEY,
 			pubkey TEXT,
 			password TEXT,
+			nodeAddress TEXT,
 			executed BOOLEAN DEFAULT false
 		);`
 	_, err = db.Exec(createTableQuery)
@@ -194,6 +195,8 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 			continue
 		}
 
+		fmt.Println("BID ADDRESS: ", bid.Validator.EtherfiNode)
+
 		fmt.Println(`> start processing bid with id:` + bid.Id)
 		
 		validator := bid.Validator
@@ -225,7 +228,7 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 
 		data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
 		
-		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, config.CONSENSUS_FOLDER_LOCATION, config.ETHERFI_SC_CLIENT_LOCATION, data, bid.Id, validator.ValidatorPubKey, db); err != nil {
+		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, config.CONSENSUS_FOLDER_LOCATION, config.ETHERFI_SC_CLIENT_LOCATION, data, bid.Id, validator.ValidatorPubKey, bid.Validator.EtherfiNode, db); err != nil {
 			return err
 		}
 
@@ -302,10 +305,11 @@ func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string) ([]schemas.BidTyp
         	bidderAddress
         	pubKeyIndex
         	validator {
-            id
-            phase
-            ipfsHashForEncryptedValidatorKey
-            validatorPubKey
+				id
+				phase
+				ipfsHashForEncryptedValidatorKey
+				validatorPubKey
+				etherfiNode
         	}
       	}
     	}`,
