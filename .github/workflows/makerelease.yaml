@@ -22,7 +22,7 @@ jobs:
         run: GOOS=linux GOARCH=arm64 go build -o etherfi-sync-client-linux-arm64
 
       - name: Build Go Application Amd
-        run: GOOS=linux GOARCH=arm64 go build -o etherfi-sync-client-linux-amd64
+        run: GOOS=linux GOARCH=amd64 go build -o etherfi-sync-client-linux-amd64
 
       - name: Create Release
         id: create_release
@@ -44,7 +44,7 @@ jobs:
       - name: Zip amd!
         run: tar -czvf etherfi-sync-client-linux-amd64.tar.gz -C . etherfi-sync-client-linux-amd64
 
-      - name: Upload Release Asset
+      - name: Upload Release Asset AMD
         id: upload-release-asset 
         uses: actions/upload-release-asset@v1
         env:
@@ -53,10 +53,21 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: |
             ./etherfi-sync-client-linux-amd64.tar.gz
-            ./etherfi-sync-client-linux-arm64.tar.gz
           asset_name: |
             etherfi-sync-client-linux-amd64.tar.gz
-            etherfi-sync-client-linux-arm64.tar.gz
           asset_content_type: |
             application/tar+gzip
+
+      - name: Upload Release Asset ARM
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: |
+            ./etherfi-sync-client-linux-arm64.tar.gz
+          asset_name: |
+            etherfi-sync-client-linux-arm64.tar.gz
+          asset_content_type: |
             application/tar+gzip
