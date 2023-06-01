@@ -1,15 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"reflect"
-	"strconv"
 	"time"
 	"os/exec"
 	"database/sql"
@@ -23,7 +20,7 @@ func main() {
 
 	// STEP 1: fetch env variables from json/.env file
 	// NOTE: I'm using json now, but easy to switch
-	config, err := getConfig()
+	config, err := utils.GetConfig("./config.json")
 	if err != nil {
 		fmt.Println("Failed to load config")
 		return
@@ -84,10 +81,7 @@ func main() {
 
 		bidId := os.Args[2]
 
-
-		query := "SELECT COUNT(*) FROM winning_bids WHERE id = ?"
-		var count int
-		err = db.QueryRow(query, bidId).Scan(&count)
+		count, err := utils.GetIDCount(db, bidId)
 		if err != nil {
 			fmt.Println("Error querying database")
 			return
@@ -128,7 +122,6 @@ func main() {
 		}
 		defer updateStmt.Close()
 
-
 		out, err := exec.Command(
 			"sudo",
 			config.PATH_TO_PRYSYM_SH,
@@ -141,7 +134,6 @@ func main() {
 			"--keys-dir=",
 			config.ETHERFI_SC_CLIENT_LOCATION).Output()
 
-		
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -185,9 +177,7 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 	for i, bid := range bids {
 		_ = i
 
-		query := "SELECT COUNT(*) FROM winning_bids WHERE id = ?"
-		var count int
-		err = db.QueryRow(query, bid.Id).Scan(&count)
+		count, err := utils.GetIDCount(db, bid.Id)
 		if err != nil {
 			fmt.Println("Error querying database")
 			return err
@@ -196,7 +186,6 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		if count > 0 {
 			continue
 		}
-
 
 		fmt.Println(`> start processing stake request from: ` + bid.Validator.BNFTHolder)
 		
@@ -221,7 +210,7 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		pubKeyArray := validatorKey.PublicKeys
 		privKeyArray := validatorKey.PrivateKeys
 
-		keypairForIndex, err := getKeyPairByPubKeyIndex(bid.PubKeyIndex, privKeyArray, pubKeyArray)
+		keypairForIndex, err := utils.GetKeyPairByPubKeyIndex(bid.PubKeyIndex, privKeyArray, pubKeyArray)
 
 		if err != nil {
 			return err
@@ -236,62 +225,6 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 	}
 
 	return nil
-}
-
-func getKeyPairByPubKeyIndex(pubkeyIndexString string, privateKeys []string, publicKeys []string) (schemas.KeyPair, error) {
-	index, err := strconv.ParseInt(pubkeyIndexString, 10, 0)
-	if err != nil {
-		return schemas.KeyPair{}, err
-	}
-	return schemas.KeyPair{
-		PrivateKey: privateKeys[index],
-		PublicKey:  publicKeys[index],
-	}, nil
-}
-
-func getConfig() (schemas.Config, error) {
-
-	err := utils.FileExists("./config.json")
-	if err != nil {
-		return schemas.Config{}, err
-	}
-	// file exists, do something with it
-
-	// read the file
-	content, err := ioutil.ReadFile("./config.json")
-	if err != nil {
-		fmt.Println("Error when opening file: ", err)
-		return schemas.Config{}, err
-	}
-
-	// parse the config data from the json
-	var data schemas.Config
-	err = json.Unmarshal(content, &data)
-	if err != nil {
-		fmt.Println("config.json has invalid form", err)
-		return schemas.Config{}, err
-	}
-
-	dataValue := reflect.ValueOf(&data).Elem()
-	typeOfData := dataValue.Type()
-
-	for i := 0; i < dataValue.NumField(); i++ {
-		fieldValue := dataValue.Field(i).Interface()
-		fieldName := typeOfData.Field(i).Name
-
-		if fieldValue == "" {
-			field := dataValue.Field(i)
-			if field.Kind() == reflect.String {
-				fmt.Printf("Value for %s is missing, enter value: ", fieldName)
-				scanner := bufio.NewScanner(os.Stdin)
-				scanner.Scan()
-				value := scanner.Text()
-				field.SetString(value)
-			}
-		}
-	}
-
-	return data, nil
 }
 
 // This function fetch bids from the Graph

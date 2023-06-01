@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"strings"
 	"fmt"
+	"strconv"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	"github.com/ethereum/go-ethereum/crypto"
 	"golang.org/x/crypto/pbkdf2"
@@ -39,14 +40,12 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 	bStakerPubKey, err := hex.DecodeString(stakerPublicKeyHex)
 	if err != nil {
 		panic(err)
-		return schemas.ValidatorKeyInfo{}
 	}
 	
 	// Get the staker's pubkey point from the public key
 	receivedStakerPubKeyPoint, err := crypto.UnmarshalPubkey(bStakerPubKey)
 	if err != nil {
 		panic(err)
-		return schemas.ValidatorKeyInfo{}
 	}
 	
 	// Get the NO's private key
@@ -92,31 +91,35 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 func DecryptGCM(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) {
 	// Decode the encryption key
 	key, err := hex.DecodeString(ENCRYPTION_KEY)
-
+	if err != nil {
+		panic(err.Error())
+	}
 	// There're three parts in the encrypted string: [iv]:[data]:[authTag]
 	parts := strings.Split(encrypted_string, ":")
 	iv, err := hex.DecodeString(parts[0])
+	if err != nil {
+		panic(err.Error())
+	}
 	ciphertext, err := hex.DecodeString(parts[1] + parts[2])
-
+	if err != nil {
+		panic(err.Error())
+	}
 	// Create an AES cipher
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		panic(err.Error())
-		return []byte{}, err
 	}
 
 	// Create a new GCM mode cipher
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
 		panic(err.Error())
-		return []byte{}, err
 	}
 
 	// Decrypt using the cipher
 	plaintext, err := aesgcm.Open(nil, iv, ciphertext, nil)
 	if err != nil {
 		panic(err.Error())
-		return []byte{}, err
 	}
 
 	return plaintext, nil
@@ -134,11 +137,11 @@ func DecryptCBC(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) 
 	}
 	iv, err := hex.DecodeString(parts[0])
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode iv:", err)
+		return nil, fmt.Errorf("failed to decode iv: %v", err)
 	}
 	ciphertext, _ := hex.DecodeString(parts[1])
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode ciphertext:", err)
+		return nil, fmt.Errorf("failed to decode ciphertext: %v", err)
 	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -163,29 +166,24 @@ func DecryptPrivateKeysGCM(privateKeys schemas.KeyStoreFile, privKeyPassword str
 	iv, err := hex.DecodeString(privateKeys.Iv)
 	if err != nil {
 		panic(err)
-		return schemas.DecryptedDataJSON{}, err
 	}
 	salt, err := hex.DecodeString(privateKeys.Salt)
 	if err != nil {
 		panic(err)
-		return schemas.DecryptedDataJSON{}, err
 	}
 	ciphertext, err := hex.DecodeString(privateKeys.Data + privateKeys.AuthTag)
 	if err != nil {
 		panic(err)
-		return schemas.DecryptedDataJSON{}, err
 	}
 
 	key := pbkdf2.Key([]byte(privKeyPassword), salt, 100000, 32, sha256.New)
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		panic(err.Error())
-		return schemas.DecryptedDataJSON{}, err
 	}
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
 		panic(err.Error())
-		return schemas.DecryptedDataJSON{}, err
 	}
 	plaintext, err := aesgcm.Open(nil, iv, ciphertext, nil)
 	if err != nil {
@@ -196,7 +194,6 @@ func DecryptPrivateKeysGCM(privateKeys schemas.KeyStoreFile, privKeyPassword str
 	err = json.Unmarshal(plaintext, &decryptedDataJSON)
 	if err != nil {
 		panic(err)
-		return schemas.DecryptedDataJSON{}, err
 	}
 
 	return decryptedDataJSON, nil
@@ -207,17 +204,14 @@ func DecryptPrivateKeysCBC(privateKeys schemas.KeyStoreFile, privKeyPassword str
 	iv, err := hex.DecodeString(privateKeys.Iv)
 	if err != nil {
 		panic(err)
-		return schemas.DecryptedDataJSON{}, err
 	}
 	salt, err := hex.DecodeString(privateKeys.Salt)
 	if err != nil {
 		panic(err)
-		return schemas.DecryptedDataJSON{}, err
 	}
 	ciphertext, err := hex.DecodeString(privateKeys.Data)
 	if err != nil {
 		panic(err)
-		return schemas.DecryptedDataJSON{}, err
 	}
 
 	key := pbkdf2.Key([]byte(privKeyPassword), salt, 100000, 32, sha256.New)
@@ -225,7 +219,6 @@ func DecryptPrivateKeysCBC(privateKeys schemas.KeyStoreFile, privKeyPassword str
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		panic(err)
-		return schemas.DecryptedDataJSON{}, err
 	}
 
 	mode := cipher.NewCBCDecrypter(block, iv)
@@ -238,12 +231,22 @@ func DecryptPrivateKeysCBC(privateKeys schemas.KeyStoreFile, privKeyPassword str
 	err = json.Unmarshal(decryptedData, &decryptedDataJSON)
 	if err != nil {
 		panic(err)
-		return schemas.DecryptedDataJSON{}, err
 	}
 
 	// fmt.Println("json:", decryptedDataJSON)
 
 	return decryptedDataJSON, nil
+}
+
+func GetKeyPairByPubKeyIndex(pubkeyIndexString string, privateKeys []string, publicKeys []string) (schemas.KeyPair, error) {
+	index, err := strconv.ParseInt(pubkeyIndexString, 10, 0)
+	if err != nil {
+		return schemas.KeyPair{}, err
+	}
+	return schemas.KeyPair{
+		PrivateKey: privateKeys[index],
+		PublicKey:  publicKeys[index],
+	}, nil
 }
 
 

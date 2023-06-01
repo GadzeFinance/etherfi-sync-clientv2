@@ -1,4 +1,3 @@
-tests/node_modules/
 output/*
 privateEtherfiKeystore-1682692241467.json
 config.json
@@ -7,3 +6,5 @@ etherfi-sync-clientv2
 privateEtherfiKeystore-1684500211284.json
 privateEtherfiKeystore-1684872754180.json
 privateEtherfiKeystore-1684504880498.json
+tests/testFiles/*
+tests/test_vars.go
