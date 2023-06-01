@@ -45,7 +45,7 @@ jobs:
         run: tar -czvf etherfi-sync-client-linux-amd64.tar.gz -C . etherfi-sync-client-linux-amd64
 
       - name: Upload Release Asset AMD
-        id: upload-release-asset 
+        id: upload-release-asset-amd
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -59,7 +59,7 @@ jobs:
             application/tar+gzip
 
       - name: Upload Release Asset ARM
-        id: upload-release-asset 
+        id: upload-release-asset-arm
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
