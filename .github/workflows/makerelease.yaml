@@ -2,7 +2,7 @@ name: Create Release with Binary
 on:
   push:
     branches:
-      - master
+      - 'v1*'
 
 jobs:
   create_release_with_binary:
@@ -18,8 +18,11 @@ jobs:
         with:
           go-version: '1.17'
 
-      - name: Build Go Application
+      - name: Build Go Application Arm
         run: GOOS=linux GOARCH=arm64 go build -o etherfi-sync-client-linux-arm64
+
+      - name: Build Go Application Amd
+        run: GOOS=linux GOARCH=arm64 go build -o etherfi-sync-client-linux-amd64
 
       - name: Create Release
         id: create_release
@@ -27,16 +30,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v1.0.2
-          release_name: v1.0.2
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
 
       - name: Print everything out
         run: ls
 
-      - name: Zip it!
+      - name: Zip arm!
         run: tar -czvf etherfi-sync-client-linux-arm64.tar.gz -C . etherfi-sync-client-linux-arm64
+
+      - name: Zip amd!
+        run: tar -czvf etherfi-sync-client-linux-amd64.tar.gz -C . etherfi-sync-client-linux-amd64
 
       - name: Upload Release Asset
         id: upload-release-asset 
@@ -45,6 +51,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./etherfi-sync-client-linux-arm64.tar.gz
-          asset_name: etherfi-sync-client-linux-arm64.tar.gz
-          asset_content_type: application/tar+gzip
+          asset_path: |
+            ./etherfi-sync-client-linux-amd64.tar.gz
+            ./etherfi-sync-client-linux-arm64.tar.gz
+          asset_name: |
+            etherfi-sync-client-linux-amd64.tar.gz
+            etherfi-sync-client-linux-arm64.tar.gz
+          asset_content_type: |
+            application/tar+gzip
+            application/tar+gzip
