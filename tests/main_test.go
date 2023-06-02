@@ -61,7 +61,7 @@ func TestDecryptCBCPrivatekey (t *testing.T) {
 	t.Run("Get Index CBC", func(t *testing.T) {
 
 		expectedKeypair := GetCBCKeypair()
-		Keypair, err := utils.GetKeyPairByPubKeyIndex("0", validatorKey.PrivateKeys, validatorKey.PublicKeys)
+		Keypair, err := utils.GetKeyPairByPubKeyIndex("11", validatorKey.PrivateKeys, validatorKey.PublicKeys)
 		if err != nil {
 			t.Fail()
 		}
@@ -122,7 +122,7 @@ func TestDecryptValidatorKeysCBC(t *testing.T) {
 
 	config, _ := utils.GetConfig("../config.json")
 
-	IPFSResponse, err := utils.FetchFromIPFS(config.IPFS_GATEWAY, "QmXA3uT5wnXfwMYbEajFUNHDPv9qENrfW3quPL9KkCNrE4")
+	IPFSResponse, err := utils.FetchFromIPFS(config.IPFS_GATEWAY, "QmX4eYKNXVmBpa4ZqBxKAZNgPa3KpTB1Ub5KBJTRtNqAaf")
 	if err != nil {
 		t.Error("Expected no errors in IPFS response, received error: ", err)
 	}
@@ -135,12 +135,12 @@ func TestDecryptValidatorKeysCBC(t *testing.T) {
 		t.Fail()
 	}
 
-	if string(data.KeystoreName) != "keystore-m_12381_3600_0_0_0-1684505941.json" {
+	if string(data.KeystoreName) != "keystore-m_12381_3600_0_0_0-1684942379.json" {
 		t.Fail()
 	}	
 }
 
-func TestDecryptValidatorKeysCGCM(t *testing.T) {
+func TestDecryptValidatorKeysGCM(t *testing.T) {
 
 	config, _ := utils.GetConfig("../config.json")
 
