@@ -46,6 +46,23 @@ touch config.json
 
 That's it! The Etherfi Sync Client will now automatically query the graph for any won auctions and import the necessary information for prysm.
 
+## Development
+1. Checkout into the `dev` branch
+2. Create your new branch
+3. Run `go mod tidy` in order to install all the packages
+4. Run `make` to build the binary.
+5. Execute the binary as mentioned in the "How to Use" section
+6. Once you have made your changes, run `make clean`
+7. Commit and push changes to your branch and submit a PR
+
+## How to make a release
+1. Checkout into the dev branch
+2. Run `git pull origin dev` to make sure you have all the changes
+3. Update the `tag_name` and `release_name` in `.github/workflows/makerelease.yaml` to the new version of the release
+4. Commit your changes
+5. Run `git push origin master`
+> Note: Pushes to the master branch will trigger a release
+
 ## Good docs to read for more understanding 
 - https://docs.prylabs.network/docs/how-prysm-works/validator-lifecycle
 - https://docs.prylabs.network/docs/wallet/nondeterministic

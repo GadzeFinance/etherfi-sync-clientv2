@@ -22,7 +22,7 @@ type KeyStoreFile struct {
 	Iv string `json:"iv"`
 	Salt string `json:"salt"`
 	Data string `json:"data"`
-	AuthTag string `json:"authTag`
+	AuthTag string `json:"authTag"`
 	EtherfiDesktopAppVersion string `json:"etherfiDesktopAppVersion"`
 }
 
