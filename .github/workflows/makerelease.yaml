@@ -61,7 +61,7 @@ jobs:
         run: tar -czvf etherfi-sync-client-windows-amd64.tar.gz -C . etherfi-sync-client-windows-amd64
 
       - name: Upload Release Asset Darwin arm
-        id: upload-release-asset 
+        id: upload-release-asset-darwin-arm
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -72,7 +72,7 @@ jobs:
           asset_content_type: application/tar+gzip
     
       - name: Upload Release Asset Darwin amd
-        id: upload-release-asset 
+        id: upload-release-asset-darwin-amd
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -83,7 +83,7 @@ jobs:
           asset_content_type: application/tar+gzip
 
       - name: Upload Release Asset linux arm
-        id: upload-release-asset 
+        id: upload-release-asset-linux-arm
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -94,7 +94,7 @@ jobs:
           asset_content_type: application/tar+gzip
     
       - name: Upload Release Asset linux amd
-        id: upload-release-asset 
+        id: upload-release-asset-linux-amd
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -105,7 +105,7 @@ jobs:
           asset_content_type: application/tar+gzip
       
       - name: Upload Release Asset windows amd
-        id: upload-release-asset 
+        id: upload-release-asset-windows-amd
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
