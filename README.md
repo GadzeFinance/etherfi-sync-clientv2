@@ -9,10 +9,10 @@ mkdir sync-client
 cd sync-client
 
 # grab the executable from github
-curl -LJO https://github.com/GadzeFinance/etherfi-sync-clientv2/releases/download/v1.0.3/etherfi-sync-client-linux-arm64.tar.gz 
+curl -LJO https://github.com/GadzeFinance/etherfi-sync-clientv2/releases/download/v1.0.4/<file-name-specified-in-release-table>
 
 # unpack the executable
-tar -xf etherfi-sync-client-linux-arm64.tar.gz
+tar -xf <file-name-specified-in-release-table>
 
 # make a new output directory for stake bids that have been won
 mkdir output
@@ -40,8 +40,8 @@ touch config.json
 
 ## How to Use
 > Note: Make sure to replace the placeholder values with your own information.
-1. Run listener: `./etherfi-sync-clientv2 listen`
-2. Run add key to prsym:  `./etherfi-sync-clientv2 add <bidder id>`
+1. Run listener: `./<binary-file-unzipped> listen`
+2. Run add key to prsym:  `./<binary-file-unzipped> add <bidder id>`
 3. If any configuration values are missing, the program may prompt you to enter them.
 
 That's it! The Etherfi Sync Client will now automatically query the graph for any won auctions and import the necessary information for prysm.
