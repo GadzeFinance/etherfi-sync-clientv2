@@ -16,8 +16,20 @@ jobs:
         with:
           go-version: '1.17'
 
-      - name: Build Go Application
-        run: GOOS=darwin GOARCH=arm64 go build -o etherfi-sync-client-linux-arm64
+      - name: Build Go Application Arm Darwin
+        run: GOOS=darwin GOARCH=arm64 go build -o etherfi-sync-client-darwin-arm64
+      
+      - name: Build Go Application Amd Darwin
+        run: GOOS=darwin GOARCH=amd64 go build -o etherfi-sync-client-darwin-amd64
+      
+      - name: Build Go Application Arm linux
+        run: GOOS=linux GOARCH=arm64 go build -o etherfi-sync-client-linux-arm64
+      
+      - name: Build Go Application Amd linux
+        run: GOOS=linux GOARCH=amd64 go build -o etherfi-sync-client-linux-amd64
+    
+      - name: Build Go Application Amd windows
+        run: GOOS=windows GOARCH=amd64 go build -o etherfi-sync-client-windows-amd64
 
       - name: Create Release
         id: create_release
@@ -33,10 +45,44 @@ jobs:
       - name: Print everything out
         run: ls
 
-      - name: Zip it!
+      - name: Zip Darwin arm!
+        run: tar -czvf etherfi-sync-client-darwin-arm64.tar.gz -C . etherfi-sync-client-darwin-arm64
+
+      - name: Zip Darwin amd!
+        run: tar -czvf etherfi-sync-client-darwin-amd64.tar.gz -C . etherfi-sync-client-darwin-amd64
+
+      - name: Zip linux arm!
         run: tar -czvf etherfi-sync-client-linux-arm64.tar.gz -C . etherfi-sync-client-linux-arm64
 
-      - name: Upload Release Asset
+      - name: Zip linux amd!
+        run: tar -czvf etherfi-sync-client-linux-amd64.tar.gz -C . etherfi-sync-client-linux-amd64
+
+      - name: Zip windows amd!
+        run: tar -czvf etherfi-sync-client-windows-amd64.tar.gz -C . etherfi-sync-client-windows-amd64
+
+      - name: Upload Release Asset Darwin arm
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./etherfi-sync-client-darwin-arm64.tar.gz
+          asset_name: etherfi-sync-client-darwin-arm64.tar.gz
+          asset_content_type: application/tar+gzip
+    
+      - name: Upload Release Asset Darwin amd
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./etherfi-sync-client-darwin-amd64.tar.gz
+          asset_name: etherfi-sync-client-darwin-amd64.tar.gz
+          asset_content_type: application/tar+gzip
+
+      - name: Upload Release Asset linux arm
         id: upload-release-asset 
         uses: actions/upload-release-asset@v1
         env:
@@ -45,4 +91,26 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./etherfi-sync-client-linux-arm64.tar.gz
           asset_name: etherfi-sync-client-linux-arm64.tar.gz
+          asset_content_type: application/tar+gzip
+    
+      - name: Upload Release Asset linux amd
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./etherfi-sync-client-linux-amd64.tar.gz
+          asset_name: etherfi-sync-client-linux-amd64.tar.gz
+          asset_content_type: application/tar+gzip
+      
+      - name: Upload Release Asset windows amd
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./etherfi-sync-client-windows-amd64.tar.gz
+          asset_name: etherfi-sync-client-windows-amd64.tar.gz
           asset_content_type: application/tar+gzip
