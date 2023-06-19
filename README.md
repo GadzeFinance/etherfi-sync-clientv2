@@ -9,7 +9,7 @@ mkdir sync-client
 cd sync-client
 
 # grab the executable from github
-curl -LJO https://github.com/GadzeFinance/etherfi-sync-clientv2/releases/download/v1.0.2/etherfi-sync-client-linux-arm64.tar.gz 
+curl -LJO https://github.com/GadzeFinance/etherfi-sync-clientv2/releases/download/v1.0.3/etherfi-sync-client-linux-arm64.tar.gz 
 
 # unpack the executable
 tar -xf etherfi-sync-client-linux-arm64.tar.gz
