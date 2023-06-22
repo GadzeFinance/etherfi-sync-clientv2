@@ -282,8 +282,6 @@ func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string, STAKER string) ([
 		return nil, err
 	}
 
-	fmt.Println("Bids:", len(result.Data.Bids))
-
 	return result.Data.Bids, nil
 }
 
