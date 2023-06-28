@@ -6,10 +6,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"math/big"
-	"strings"
 	"fmt"
+	"math/big"
 	"strconv"
+	"strings"
+
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	"github.com/ethereum/go-ethereum/crypto"
 	"golang.org/x/crypto/pbkdf2"
@@ -35,19 +36,19 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 	encryptedKeystoreName := file.EncryptedKeystoreName
 	encryptedPassword := file.EncryptedPassword
 	stakerPublicKeyHex := file.StakerPublicKey
-	
+
 	// Get the staker's public key from its hex string
 	bStakerPubKey, err := hex.DecodeString(stakerPublicKeyHex)
 	if err != nil {
 		panic(err)
 	}
-	
+
 	// Get the staker's pubkey point from the public key
 	receivedStakerPubKeyPoint, err := crypto.UnmarshalPubkey(bStakerPubKey)
 	if err != nil {
 		panic(err)
 	}
-	
+
 	// Get the NO's private key
 	nodeOperatorPrivKey := fromString(privateKey)
 	// It seems that we need to mod this value to get the private key fit in to the curve library functions
@@ -58,6 +59,12 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 	curve := crypto.S256()
 	nodeOperatorSharedSecret, _ := curve.ScalarMult(receivedStakerPubKeyPoint.X, receivedStakerPubKeyPoint.Y, nodeOperatorPrivKey.Bytes())
 	secretAsArray := nodeOperatorSharedSecret.Bytes()
+
+	// Prepend 0 until the length hits 32 bytes
+	for len(secretAsArray) < 32 {
+		emptyByte := byte(0)
+		secretAsArray = append([]byte{emptyByte}, secretAsArray...)
+	}
 
 	// For compatibility, if all three encrypted fields are in the form [iv]:[data], we decrypt them using CBC mode
 	isUsingCBC := false
@@ -86,7 +93,6 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 		KeystoreName:         bKeystoreName,
 	}
 }
-
 
 func DecryptGCM(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) {
 	// Decode the encryption key
@@ -147,7 +153,7 @@ func DecryptCBC(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
-	if len(ciphertext) % aes.BlockSize != 0 {
+	if len(ciphertext)%aes.BlockSize != 0 {
 		return nil, fmt.Errorf("ciphertext is not a multiple of 16")
 	}
 	mode := cipher.NewCBCDecrypter(block, iv)
@@ -199,7 +205,6 @@ func DecryptPrivateKeysGCM(privateKeys schemas.KeyStoreFile, privKeyPassword str
 	return decryptedDataJSON, nil
 }
 
-
 func DecryptPrivateKeysCBC(privateKeys schemas.KeyStoreFile, privKeyPassword string) (schemas.DecryptedDataJSON, error) {
 	iv, err := hex.DecodeString(privateKeys.Iv)
 	if err != nil {
@@ -248,7 +253,6 @@ func GetKeyPairByPubKeyIndex(pubkeyIndexString string, privateKeys []string, pub
 		PublicKey:  publicKeys[index],
 	}, nil
 }
-
 
 // PrettyPrint to print struct in a readable way
 func PrettyPrint(i interface{}) string {
