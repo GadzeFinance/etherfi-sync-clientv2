@@ -1,16 +1,15 @@
 package utils
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"bufio"
 	"os"
 	"reflect"
+
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 )
-
-
 
 func GetConfig(pathToFile string) (schemas.Config, error) {
 
@@ -41,6 +40,11 @@ func GetConfig(pathToFile string) (schemas.Config, error) {
 	for i := 0; i < dataValue.NumField(); i++ {
 		fieldValue := dataValue.Field(i).Interface()
 		fieldName := typeOfData.Field(i).Name
+
+		// STAKER is optional
+		if fieldName == "STAKER" {
+			continue
+		}
 
 		if fieldValue == "" {
 			field := dataValue.Field(i)

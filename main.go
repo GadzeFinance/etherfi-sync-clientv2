@@ -2,17 +2,18 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"time"
 	"os/exec"
-	"database/sql"
-	_ "github.com/glebarez/go-sqlite"
+	"time"
+
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/utils"
+	_ "github.com/glebarez/go-sqlite"
 	"github.com/robfig/cron"
 )
 
@@ -36,7 +37,7 @@ func main() {
 	}
 	defer db.Close()
 
-		// Create the table if it doesn't exist
+	// Create the table if it doesn't exist
 	createTableQuery := `
 		CREATE TABLE IF NOT EXISTS winning_bids (
 			id STRING PRIMARY KEY,
@@ -60,15 +61,15 @@ func main() {
 	if programType == "listen" {
 		c := cron.New()
 		c.AddFunc("1 * * * *", func() {
-	
+
 			if err := cronjob(config, db); err != nil {
 				fmt.Printf("Error executing function: %s\n", err)
 				os.Exit(1)
 			}
 		})
-	
+
 		c.Start()
-	
+
 		for {
 			time.Sleep(time.Second)
 		}
@@ -85,7 +86,7 @@ func main() {
 		if err != nil {
 			fmt.Println("Error querying database")
 			return
-		} 
+		}
 
 		if count == 0 {
 			fmt.Println("No bids with the ID specified")
@@ -98,7 +99,7 @@ func main() {
 			return
 		}
 		defer stmt.Close()
-		
+
 		var executed bool
 		err = stmt.QueryRow(bidId).Scan(&executed)
 		if err != nil {
@@ -167,8 +168,8 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		isUsingCBC = true
 	}
 
-	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
-	
+	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER, config.STAKER)
+
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return err
@@ -181,14 +182,14 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		if err != nil {
 			fmt.Println("Error querying database")
 			return err
-		} 
+		}
 
 		if count > 0 {
 			continue
 		}
 
 		fmt.Println(`> start processing stake request from: ` + bid.Validator.BNFTHolder)
-		
+
 		validator := bid.Validator
 		ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
 
@@ -206,7 +207,7 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		if err != nil {
 			return err
 		}
-		
+
 		pubKeyArray := validatorKey.PublicKeys
 		privKeyArray := validatorKey.PrivateKeys
 
@@ -217,7 +218,7 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		}
 
 		data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
-		
+
 		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, config.CONSENSUS_FOLDER_LOCATION, config.ETHERFI_SC_CLIENT_LOCATION, data, bid.Id, validator.ValidatorPubKey, bid.Validator.EtherfiNode, db); err != nil {
 			return err
 		}
@@ -228,13 +229,18 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 }
 
 // This function fetch bids from the Graph
-func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string) ([]schemas.BidType, error) {
+func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string, STAKER string) ([]schemas.BidType, error) {
+
+	validatorFilter := `{ phase: VALIDATOR_REGISTERED }`
+	if STAKER != "" {
+		validatorFilter = `{ phase: VALIDATOR_REGISTERED, BNFTHolder: "` + STAKER + `"}`
+	}
 
 	// the query to fetch bids
 	queryJsonData := map[string]string{
 		"query": `
 		  {
-      	bids(where: { bidderAddress: "` + BIDDER + `", status: "WON", validator_not: null, validator_: { phase: VALIDATOR_REGISTERED} }) {
+      	bids(where: { bidderAddress: "` + BIDDER + `", status: "WON", validator_not: null, validator_: ` + validatorFilter + ` }) {
         	id
         	bidderAddress
         	pubKeyIndex
