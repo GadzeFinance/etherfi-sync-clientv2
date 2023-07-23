@@ -46,7 +46,7 @@ func GetConfig(pathToFile string) (schemas.Config, error) {
 			continue
 		}
 
-		if fieldValue == "" {
+		if fieldValue == "" && fieldName != "PATH_TO_VALIDATOR" {
 			field := dataValue.Field(i)
 			if field.Kind() == reflect.String {
 				fmt.Printf("Value for %s is missing, enter value: ", fieldName)

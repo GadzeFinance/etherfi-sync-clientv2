@@ -32,17 +32,13 @@ touch config.json
   "OUTPUT_LOCATION": "<path to the folder where you want to output >",
   "PASSWORD": "<password used when generating the keys with the desktop app>",
   "IPFS_GATEWAY": "<IPFS gateway URL>",
-  "CONSENSUS_FOLDER_LOCATION": "<folder location to consensus/validator_keys>",
-	"ETHERFI_SC_CLIENT_LOCATION": "<location to prysm client folder>",
-  "PATH_TO_PRYSYM_SH": "<folder path to the ./prysym.sh file>"
+  "PATH_TO_VALIDATOR": "<path to the teku validator folder>"
 }
 ```
 
 ## How to Use
 > Note: Make sure to replace the placeholder values with your own information.
-1. Run listener: `./<binary-file-unzipped> listen`
-2. Run add key to prsym:  `./<binary-file-unzipped> add <bidder id>`
-3. If any configuration values are missing, the program may prompt you to enter them.
+Run listener: `./<binary-file-unzipped>`
 
 That's it! The Etherfi Sync Client will now automatically query the graph for any won auctions and import the necessary information for prysm.
 

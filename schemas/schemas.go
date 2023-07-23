@@ -8,9 +8,7 @@ type Config struct {
 	OUTPUT_LOCATION            string `json:"OUTPUT_LOCATION"`
 	PASSWORD                   string `json:"PASSWORD"`
 	IPFS_GATEWAY               string `json:"IPFS_GATEWAY"`
-	CONSENSUS_FOLDER_LOCATION  string `json:"CONSENSUS_FOLDER_LOCATION"`
-	ETHERFI_SC_CLIENT_LOCATION string `json:"ETHERFI_SC_CLIENT_LOCATION"`
-	PATH_TO_PRYSYM_SH          string `json:"PATH_TO_PRYSYM_SH"`
+	PATH_TO_VALIDATOR          string `json:"PATH_TO_VALIDATOR"`
 }
 
 type ValidatorKeyInfo struct {
@@ -66,4 +64,13 @@ type DecryptedDataJSON struct {
 type KeyPair struct {
 	PublicKey  string `json:"publicKey"`
 	PrivateKey string `json:"privateKey"`
+}
+
+type Configuration struct {
+	ProposerConfig map[string]ProposerEntry `json:"proposer_config"`
+	DefaultConfig  ProposerEntry            `json:"default_config"`
+}
+
+type ProposerEntry struct {
+	FeeRecipient string `json:"fee_recipient"`
 }

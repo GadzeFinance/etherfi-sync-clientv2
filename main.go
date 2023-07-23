@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/exec"
 	"time"
 
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
@@ -52,104 +51,19 @@ func main() {
 		return
 	}
 
-	if len(os.Args) < 2 {
-		fmt.Println("Specify 'listen' or 'add' argument")
-		return
-	}
+	c := cron.New()
+	c.AddFunc("1 * * * *", func() {
 
-	programType := os.Args[1]
-	if programType == "listen" {
-		c := cron.New()
-		c.AddFunc("1 * * * *", func() {
-
-			if err := cronjob(config, db); err != nil {
-				fmt.Printf("Error executing function: %s\n", err)
-				os.Exit(1)
-			}
-		})
-
-		c.Start()
-
-		for {
-			time.Sleep(time.Second)
+		if err := cronjob(config, db); err != nil {
+			fmt.Printf("Error executing function: %s\n", err)
+			os.Exit(1)
 		}
-	} else if programType == "add" {
+	})
 
-		if len(os.Args) < 3 {
-			fmt.Println("Specify the bid id argument")
-			return
-		}
+	c.Start()
 
-		bidId := os.Args[2]
-
-		count, err := utils.GetIDCount(db, bidId)
-		if err != nil {
-			fmt.Println("Error querying database")
-			return
-		}
-
-		if count == 0 {
-			fmt.Println("No bids with the ID specified")
-			return
-		}
-
-		stmt, err := db.Prepare("SELECT executed FROM winning_bids WHERE id = ?")
-		if err != nil {
-			fmt.Println("Error preparing statement:", err)
-			return
-		}
-		defer stmt.Close()
-
-		var executed bool
-		err = stmt.QueryRow(bidId).Scan(&executed)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				fmt.Println("No row found with the specified ID")
-			} else {
-				fmt.Println("Error retrieving data:", err)
-			}
-			return
-		}
-
-		if executed {
-			fmt.Println("These keys have already been added. Ending program")
-			return
-		}
-
-		updateStmt, err := db.Prepare("UPDATE winning_bids SET executed = true WHERE id = ?")
-		if err != nil {
-			fmt.Println("Error preparing UPDATE statement:", err)
-			return
-		}
-		defer updateStmt.Close()
-
-		out, err := exec.Command(
-			"sudo",
-			config.PATH_TO_PRYSYM_SH,
-			"validator",
-			"accounts",
-			"import",
-			"--goerli",
-			"--wallet-dir=",
-			config.CONSENSUS_FOLDER_LOCATION,
-			"--keys-dir=",
-			config.ETHERFI_SC_CLIENT_LOCATION).Output()
-
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		_, err = updateStmt.Exec(bidId)
-		if err != nil {
-			fmt.Println("Error updating data:", err)
-			return
-		}
-
-		fmt.Println(out)
-
-	} else {
-		fmt.Println("Specify 'listen' or 'add' argument")
+	for {
+		time.Sleep(time.Second)
 	}
 }
 
@@ -175,6 +89,7 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		return err
 	}
 
+	refreshTeku := false
 	for i, bid := range bids {
 		_ = i
 
@@ -188,6 +103,7 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 			continue
 		}
 
+		refreshTeku = true
 		fmt.Println(`> start processing stake request from: ` + bid.Validator.BNFTHolder)
 
 		validator := bid.Validator
@@ -219,10 +135,24 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 
 		data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
 
-		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, config.CONSENSUS_FOLDER_LOCATION, config.ETHERFI_SC_CLIENT_LOCATION, data, bid.Id, validator.ValidatorPubKey, bid.Validator.EtherfiNode, db); err != nil {
+
+		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, data, bid.Id, validator.ValidatorPubKey, bid.Validator.EtherfiNode, db); err != nil {
 			return err
 		}
 
+		if config.PATH_TO_VALIDATOR != "" {
+			if err := utils.SaveTekuProposerConfig(config.PATH_TO_VALIDATOR, validator.ValidatorPubKey, bid.Validator.EtherfiNode); err != nil {
+				return err
+			}
+
+			if err := utils.AddToTeku(config.PATH_TO_VALIDATOR, bid.Id, data); err != nil {
+				return err
+			}
+		}
+	}
+
+	if refreshTeku {
+		utils.RefreshTeku()
 	}
 
 	return nil

@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"bufio"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -10,9 +9,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"time"
-
+	"strings"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 )
 
@@ -48,7 +46,14 @@ func FetchFromIPFS(gatewayURL string, cid string) (schemas.IPFSResponseType, err
 	return ipfsResponse, nil
 }
 
-func SaveKeysToFS(output_location string, consensus_location string, client_location string, validatorInfo schemas.ValidatorKeyInfo, bidId string, validatorPublicKey string, nodeAddress string, db *sql.DB) error {
+func SaveKeysToFS(
+	output_location string,
+	validatorInfo schemas.ValidatorKeyInfo,
+	bidId string,
+	validatorPublicKey string,
+	nodeAddress string,
+	db *sql.DB,
+) error {
 
 	// Step 1: Create directory and add data to the directory
 	if err := createDir(output_location); err != nil {
@@ -91,6 +96,21 @@ func SaveKeysToFS(output_location string, consensus_location string, client_loca
 	return nil
 }
 
+func AddToTeku(validatorPath string, bidId string, validatorInfo schemas.ValidatorKeyInfo) error {
+
+	passwordFilename := fmt.Sprintf("password-%s.txt", bidId)
+	if err := createFile(filepath.Join(validatorPath, "passwords", passwordFilename), string(validatorInfo.ValidatorKeyPassword)); err != nil {
+		return err
+	}
+
+	keystoreFileName := fmt.Sprintf("keystore-%s.json", bidId)
+	if err := createFile(filepath.Join(validatorPath, "keys", keystoreFileName), string(validatorInfo.ValidatorKeyFile)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func createDir(location string) error {
 	if _, err := os.Stat(location); os.IsNotExist(err) {
 		// path/to/whatever does not exist
@@ -127,49 +147,41 @@ func ExtractPrivateKeysFromFS(location string) (schemas.KeyStoreFile, error) {
 	return payload, nil
 }
 
-func getConfig() (schemas.Config, error) {
+func SaveTekuProposerConfig(validatorPath, pubKey, feeRecipient string) error {
 
-	err := FileExists("./config.json")
+	tekuProposerConfigFile := filepath.Join(validatorPath, "teku_proposer_config.json")
+	fileContent, err := ioutil.ReadFile(tekuProposerConfigFile)
 	if err != nil {
-		return schemas.Config{}, err
+		return err
 	}
-	// file exists, do something with it
 
-	// read the file
-	content, err := ioutil.ReadFile("./config.json")
+	var config schemas.Configuration
+	err = json.Unmarshal(fileContent, &config)
+	if err := json.Unmarshal(fileContent, &config); err != nil {
+		return err
+	}
+
+	if config.ProposerConfig == nil {
+		config.ProposerConfig = make(map[string]schemas.ProposerEntry)
+	}
+
+	pubKey = strings.ToLower(strings.TrimSpace(pubKey))
+	feeRecipient = strings.ToLower(strings.TrimSpace(feeRecipient))
+
+	config.ProposerConfig[pubKey] = schemas.ProposerEntry{
+		FeeRecipient: feeRecipient,
+	}
+
+	updatedJSON, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		fmt.Println("Error when opening file: ", err)
-		return schemas.Config{}, err
+		return err
 	}
 
-	// parse the config data from the json
-	var data schemas.Config
-	err = json.Unmarshal(content, &data)
-	if err != nil {
-		fmt.Println("config.json has invalid form", err)
-		return schemas.Config{}, err
+	if err := ioutil.WriteFile(tekuProposerConfigFile, updatedJSON, 0644);  err != nil {
+		return err
 	}
 
-	dataValue := reflect.ValueOf(&data).Elem()
-	typeOfData := dataValue.Type()
-
-	for i := 0; i < dataValue.NumField(); i++ {
-		fieldValue := dataValue.Field(i).Interface()
-		fieldName := typeOfData.Field(i).Name
-
-		if fieldValue == "" {
-			field := dataValue.Field(i)
-			if field.Kind() == reflect.String {
-				fmt.Printf("Value for %s is missing, enter value: ", fieldName)
-				scanner := bufio.NewScanner(os.Stdin)
-				scanner.Scan()
-				value := scanner.Text()
-				field.SetString(value)
-			}
-		}
-	}
-
-	return data, nil
+	return nil
 }
 
 func FileExists(filename string) error {
