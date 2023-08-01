@@ -81,14 +81,14 @@ func SaveKeysToFS(
 		return err
 	}
 
-	query := "REPLACE INTO winning_bids (id, pubkey, password, nodeAddress) VALUES (?, ?, ?, ?)"
+	query := "REPLACE INTO winning_bids (id, pubkey, password, nodeAddress, keystore) VALUES (?, ?, ?, ?, ?)"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(bidId, validatorPublicKey, string(validatorInfo.ValidatorKeyPassword), nodeAddress)
+	_, err = stmt.Exec(bidId, validatorPublicKey, string(validatorInfo.ValidatorKeyPassword), nodeAddress, string(validatorInfo.ValidatorKeyFile))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -96,15 +96,29 @@ func SaveKeysToFS(
 	return nil
 }
 
-func AddToTeku(validatorPath string, bidId string, validatorInfo schemas.ValidatorKeyInfo) error {
+func AddToTeku(validatorPath string, bidId string, password string, validatorKeyFile string) error {
 
 	passwordFilename := fmt.Sprintf("password-%s.txt", bidId)
-	if err := createFile(filepath.Join(validatorPath, "passwords", passwordFilename), string(validatorInfo.ValidatorKeyPassword)); err != nil {
+	if err := createFile(filepath.Join(validatorPath, "passwords", passwordFilename), string(password)); err != nil {
 		return err
 	}
 
 	keystoreFileName := fmt.Sprintf("keystore-%s.json", bidId)
-	if err := createFile(filepath.Join(validatorPath, "keys", keystoreFileName), string(validatorInfo.ValidatorKeyFile)); err != nil {
+	if err := createFile(filepath.Join(validatorPath, "keys", keystoreFileName), string(validatorKeyFile)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DeleteFromTeku(validatorPath string, bidId string) error {
+	passwordFilename := fmt.Sprintf("password-%s.txt", bidId)
+	if err := deleteFile(filepath.Join(validatorPath, "passwords", passwordFilename)); err != nil {
+		return err
+	}
+
+	keystoreFileName := fmt.Sprintf("keystore-%s.json", bidId)
+	if err := deleteFile(filepath.Join(validatorPath, "keys", keystoreFileName)); err != nil {
 		return err
 	}
 
@@ -130,6 +144,19 @@ func createFile(location string, content string) error {
 	return nil
 }
 
+func deleteFile(filePath string) error {
+	if exists := FileExists(filePath); !exists {
+		return nil
+	}
+
+	err := os.Remove(filePath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func ExtractPrivateKeysFromFS(location string) (schemas.KeyStoreFile, error) {
 	content, err := ioutil.ReadFile(location)
 	if err != nil {
@@ -150,6 +177,11 @@ func ExtractPrivateKeysFromFS(location string) (schemas.KeyStoreFile, error) {
 func SaveTekuProposerConfig(validatorPath, pubKey, feeRecipient string) error {
 
 	tekuProposerConfigFile := filepath.Join(validatorPath, "teku_proposer_config.json")
+	if exists := FileExists(tekuProposerConfigFile); !exists {
+		fmt.Println("teku_proposer_config.json does not exist")
+		return nil
+	}
+
 	fileContent, err := ioutil.ReadFile(tekuProposerConfigFile)
 	if err != nil {
 		return err
@@ -184,10 +216,47 @@ func SaveTekuProposerConfig(validatorPath, pubKey, feeRecipient string) error {
 	return nil
 }
 
-func FileExists(filename string) error {
+func RemoveTekuProposerConfig(validatorPath, pubKey string) error {
+	tekuProposerConfigFile := filepath.Join(validatorPath, "teku_proposer_config.json")
+
+	if exists := FileExists(tekuProposerConfigFile); !exists {
+		fmt.Println("teku_proposer_config.json does not exist")
+		return nil
+	}
+
+	fileContent, err := ioutil.ReadFile(tekuProposerConfigFile)
+	if err != nil {
+		return err
+	}
+
+	var config schemas.Configuration
+	err = json.Unmarshal(fileContent, &config)
+	if err != nil {
+		return err
+	}
+
+	pubKey = strings.ToLower(strings.TrimSpace(pubKey))
+
+	if config.ProposerConfig != nil {
+		delete(config.ProposerConfig, pubKey)
+	}
+
+	updatedJSON, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(tekuProposerConfigFile, updatedJSON, 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func FileExists(filename string) bool {
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("file %s does not exist", filename)
+		return false
 	}
-	return err
+	return true
 }

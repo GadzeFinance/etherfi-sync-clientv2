@@ -74,3 +74,39 @@ type Configuration struct {
 type ProposerEntry struct {
 	FeeRecipient string `json:"fee_recipient"`
 }
+
+type BeaconResponse struct {
+	Status string `json:"status"`
+	Data   BeaconResponseData   `json:"data"`
+}
+
+type BeaconResponseData struct {
+	ActivationEligibilityEpoch int64  `json:"activationeligibilityepoch"`
+	ActivationEpoch            int64  `json:"activationepoch"`
+	Balance                    int64  `json:"balance"`
+	EffectiveBalance           int64  `json:"effectivebalance"`
+	ExitEpoch                  int64  `json:"exitepoch"`
+	LastAttestationSlot        int64  `json:"lastattestationslot"`
+	Name                       string `json:"name"`
+	PubKey                     string `json:"pubkey"`
+	Slashed                    bool   `json:"slashed"`
+	Status                     string `json:"status"`
+	ValidatorIndex             int64  `json:"validatorindex"`
+	WithdrawableEpoch          int64  `json:"withdrawableepoch"`
+	WithdrawalCredentials      string `json:"withdrawalcredentials"`
+	TotalWithdrawals           int64  `json:"total_withdrawals"`
+}
+
+type TableBid struct {
+	Id string
+	Pubkey string
+	Password string
+	NodeAddress string
+	SyncStatus string
+	Keystore string
+}
+
+type DisplayBid struct {
+	Id string
+	Pubkey string
+}
