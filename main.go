@@ -240,7 +240,7 @@ func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string, STAKER string) ([
 	queryJsonData := map[string]string{
 		"query": `
 		  {
-      	bids(where: { bidderAddress: "` + BIDDER + `", status: "WON", validator_not: null, validator_: ` + validatorFilter + ` }) {
+      	bids(where: { bidderAddress: "` + BIDDER + `", status: "WON", validator_not: null, validator_: ` + validatorFilter + ` }, first: 1000) {
         	id
         	bidderAddress
         	pubKeyIndex
