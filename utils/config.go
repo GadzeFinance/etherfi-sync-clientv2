@@ -7,17 +7,14 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
-
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 )
 
 func GetConfig(pathToFile string) (schemas.Config, error) {
 
-	err := FileExists(pathToFile)
-	if err != nil {
-		return schemas.Config{}, err
+	if exists := FileExists(pathToFile); !exists {
+		return schemas.Config{}, fmt.Errorf("Config file does not exist")
 	}
-	// file exists, do something with it
 
 	// read the file
 	content, err := ioutil.ReadFile(pathToFile)
@@ -46,7 +43,7 @@ func GetConfig(pathToFile string) (schemas.Config, error) {
 			continue
 		}
 
-		if fieldValue == "" {
+		if fieldValue == "" && fieldName != "PATH_TO_VALIDATOR" {
 			field := dataValue.Field(i)
 			if field.Kind() == reflect.String {
 				fmt.Printf("Value for %s is missing, enter value: ", fieldName)

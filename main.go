@@ -8,28 +8,23 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/exec"
 	"time"
-
+	"bufio"
+	"strings"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/utils"
+	"github.com/jedib0t/go-pretty/v6/table"
 	_ "github.com/glebarez/go-sqlite"
 	"github.com/robfig/cron"
 )
 
 func main() {
 
-	// STEP 1: fetch env variables from json/.env file
-	// NOTE: I'm using json now, but easy to switch
 	config, err := utils.GetConfig("./config.json")
 	if err != nil {
 		fmt.Println("Failed to load config")
 		return
 	}
-
-	fmt.Println("Starting Sync Client!")
-	fmt.Println("Configuration values: ")
-	fmt.Println(PrettyPrint(config))
 
 	db, err := sql.Open("sqlite", "data.db")
 	if err != nil {
@@ -37,119 +32,109 @@ func main() {
 	}
 	defer db.Close()
 
-	// Create the table if it doesn't exist
-	createTableQuery := `
-		CREATE TABLE IF NOT EXISTS winning_bids (
-			id STRING PRIMARY KEY,
-			pubkey TEXT,
-			password TEXT,
-			nodeAddress TEXT,
-			executed BOOLEAN DEFAULT false
-		);`
-	_, err = db.Exec(createTableQuery)
+	err = utils.CreateTable(db)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	if len(os.Args) < 2 {
-		fmt.Println("Specify 'listen' or 'add' argument")
+		fmt.Println("Specify 'listen' or 'changes' argument")
 		return
 	}
 
 	programType := os.Args[1]
 	if programType == "listen" {
+		fmt.Println("Starting Sync Client!")
+		fmt.Println("Configuration values: ")
+		fmt.Println(PrettyPrint(config))
 		c := cron.New()
 		c.AddFunc("1 * * * *", func() {
-
 			if err := cronjob(config, db); err != nil {
 				fmt.Printf("Error executing function: %s\n", err)
 				os.Exit(1)
 			}
 		})
-
+	
 		c.Start()
-
 		for {
 			time.Sleep(time.Second)
 		}
-	} else if programType == "add" {
-
-		if len(os.Args) < 3 {
-			fmt.Println("Specify the bid id argument")
-			return
-		}
-
-		bidId := os.Args[2]
-
-		count, err := utils.GetIDCount(db, bidId)
+	} else if programType == "changes" {
+	
+		// Query database and find all PENDING
+		pendingBids, err := utils.GetRowsByStatus(db, "PENDING")
 		if err != nil {
-			fmt.Println("Error querying database")
-			return
+			panic(err)
 		}
-
-		if count == 0 {
-			fmt.Println("No bids with the ID specified")
-			return
-		}
-
-		stmt, err := db.Prepare("SELECT executed FROM winning_bids WHERE id = ?")
+		// Query all and find those that are EXITED
+		exitedBids, err := utils.GetRowsByStatus(db, "EXITED")
 		if err != nil {
-			fmt.Println("Error preparing statement:", err)
+			panic(err)
+		}
+		// Print them out each
+		fmt.Println("The following validators with these bid IDs will be modified")
+		t := table.NewWriter()
+    t.SetOutputMirror(os.Stdout)
+		t.AppendHeader(table.Row{"Bid ID", "Public Key", "Change"})
+		for _, bid := range pendingBids {
+			t.AppendRow([]interface{}{bid.Id, bid.Pubkey, "ADD"})
+		}
+
+		for _, bid := range exitedBids {
+			t.AppendRow([]interface{}{bid.Id, bid.Pubkey, "REMOVE"})
+		}
+
+		t.Render()
+
+
+		// If yes is pressed, copy file contents of each bid and paste them into respective location and update validators in TEKU
+		fmt.Println(`Type "CONFIRM" to apply these changes`)
+		fmt.Print("Enter text: ")
+		reader := bufio.NewReader(os.Stdin)
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("An error occured while reading input. Please try again", err)
 			return
 		}
-		defer stmt.Close()
+		input = strings.TrimSuffix(input, "\n")
+		fmt.Println(input)
 
-		var executed bool
-		err = stmt.QueryRow(bidId).Scan(&executed)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				fmt.Println("No row found with the specified ID")
-			} else {
-				fmt.Println("Error retrieving data:", err)
+		// Refresh Teku
+		if input == "CONFIRM" {
+			for _, bid := range exitedBids {
+				if err := utils.DeleteFromTeku(config.PATH_TO_VALIDATOR, bid.Id); err != nil {
+					panic(err)
+				}
+				if err := utils.UpdateRowStatus(db, bid.Id, "REMOVED"); err != nil {
+					panic(err)
+				}
+				if err:= utils.RemoveTekuProposerConfig(config.PATH_TO_VALIDATOR, bid.Pubkey); err != nil {
+					panic(err)
+				}
 			}
-			return
+			for _, bidItem := range pendingBids {
+
+				bid, err := utils.GetBid(db, bidItem.Id)
+				if err != nil {
+					panic(err)
+				}
+				if config.PATH_TO_VALIDATOR != "" {
+					if err := utils.SaveTekuProposerConfig(config.PATH_TO_VALIDATOR, bid.Pubkey, bid.NodeAddress); err != nil {
+						panic(err)
+					}
+					if err := utils.AddToTeku(config.PATH_TO_VALIDATOR, bid.Id, bid.Password, bid.Keystore); err != nil {
+						panic(err)
+					}
+				}
+
+				if err := utils.UpdateRowStatus(db, bidItem.Id, "ADDED"); err != nil {
+					panic(err)
+				}
+			}
+			utils.RefreshTeku()
+			fmt.Println("Changes added")
 		}
-
-		if executed {
-			fmt.Println("These keys have already been added. Ending program")
-			return
-		}
-
-		updateStmt, err := db.Prepare("UPDATE winning_bids SET executed = true WHERE id = ?")
-		if err != nil {
-			fmt.Println("Error preparing UPDATE statement:", err)
-			return
-		}
-		defer updateStmt.Close()
-
-		out, err := exec.Command(
-			"sudo",
-			config.PATH_TO_PRYSYM_SH,
-			"validator",
-			"accounts",
-			"import",
-			"--goerli",
-			"--wallet-dir=",
-			config.CONSENSUS_FOLDER_LOCATION,
-			"--keys-dir=",
-			config.ETHERFI_SC_CLIENT_LOCATION).Output()
-
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		_, err = updateStmt.Exec(bidId)
-		if err != nil {
-			fmt.Println("Error updating data:", err)
-			return
-		}
-
-		fmt.Println(out)
-
-	} else {
-		fmt.Println("Specify 'listen' or 'add' argument")
 	}
 }
 
@@ -210,7 +195,6 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 
 		pubKeyArray := validatorKey.PublicKeys
 		privKeyArray := validatorKey.PrivateKeys
-
 		keypairForIndex, err := utils.GetKeyPairByPubKeyIndex(bid.PubKeyIndex, privKeyArray, pubKeyArray)
 
 		if err != nil {
@@ -219,16 +203,24 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 
 		data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
 
-		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, config.CONSENSUS_FOLDER_LOCATION, config.ETHERFI_SC_CLIENT_LOCATION, data, bid.Id, validator.ValidatorPubKey, bid.Validator.EtherfiNode, db); err != nil {
+
+		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, data, bid.Id, validator.ValidatorPubKey, bid.Validator.EtherfiNode, db); err != nil {
 			return err
 		}
 
+		// Add query that checks beacon nodes for all active validators
+		if utils.GetExitStatus(validator.ValidatorPubKey) {
+			if err != utils.UpdateRowStatus(db, bid.Id, "EXITED") {
+				panic(err)
+			}
+		}
 	}
 
 	return nil
 }
 
 // This function fetch bids from the Graph
+// TODO: Paginate this
 func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string, STAKER string) ([]schemas.BidType, error) {
 
 	validatorFilter := `{ phase: VALIDATOR_REGISTERED }`
