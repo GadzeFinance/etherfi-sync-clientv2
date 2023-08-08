@@ -1,30 +1,23 @@
 package utils
 
 import (
-	"context"
+	"os"
 	"fmt"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
+	"syscall"
 )
 
-func RefreshTeku() {
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+func RefreshTeku(pid int) {
+	// Find the process with the given PID
+	process, err := os.FindProcess(pid)
 	if err != nil {
-		panic(err)
+		fmt.Println("Error finding process:", err)
+		return
 	}
 
-	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{})
+	// Send SIGHUP signal to the process
+	err = process.Signal(syscall.SIGHUP)
 	if err != nil {
-		panic(err)
-	}
-
-	for _, container := range containers {
-		if container.Image == "consensys/teku:latest" {
-			fmt.Printf("SIGNALLING HUP TO VALIDATOR")
-			err := cli.ContainerKill(context.Background(), container.ID, "HUP")
-			if err != nil {
-				panic(err)
-			}
-		}
+		fmt.Println("Error sending signal:", err)
+		return
 	}
 }

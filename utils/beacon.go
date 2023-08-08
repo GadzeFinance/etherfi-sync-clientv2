@@ -9,7 +9,7 @@ import (
 )
 
 func GetExitStatus(pubKey string) (bool) {
-	reqUrl := "https://goerli.beaconcha.in/api/v1/validator/" + pubKey 
+	reqUrl := "https:/beaconcha.in/api/v1/validator/" + pubKey 
 	resp, err := http.Get(reqUrl)
 	if err == nil {
 		var response schemas.BeaconResponse

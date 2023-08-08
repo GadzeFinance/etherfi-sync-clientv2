@@ -32,7 +32,8 @@ touch config.json
   "OUTPUT_LOCATION": "<path to the folder where you want to output >",
   "PASSWORD": "<password used when generating the keys with the desktop app>",
   "IPFS_GATEWAY": "<IPFS gateway URL>",
-  "PATH_TO_VALIDATOR": "<path to the teku validator folder>"
+  "PATH_TO_VALIDATOR": "<path to the teku validator folder>",
+  "TEKU_PID": "<Process ID of the running Teku client>"
 }
 ```
 
