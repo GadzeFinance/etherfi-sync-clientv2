@@ -132,7 +132,7 @@ func main() {
 					panic(err)
 				}
 			}
-			utils.RefreshTeku()
+			utils.RefreshTeku(config.TEKU_PID)
 			fmt.Println("Changes added")
 		}
 	}

@@ -5,5 +5,6 @@
 	"OUTPUT_LOCATION": "output",
 	"PASSWORD": "$M00THOp3rat0R",
 	"IPFS_GATEWAY": "https://etherfi-goerli.infura-ipfs.io/ipfs",
-  "PATH_TO_VALIDATOR": "./validator/teku"
+  "PATH_TO_VALIDATOR": "./validator/teku",
+	"TEKU_PID": 1234
 }

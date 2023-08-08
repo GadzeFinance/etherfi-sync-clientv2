@@ -9,6 +9,7 @@ type Config struct {
 	PASSWORD                   string `json:"PASSWORD"`
 	IPFS_GATEWAY               string `json:"IPFS_GATEWAY"`
 	PATH_TO_VALIDATOR          string `json:"PATH_TO_VALIDATOR"`
+	TEKU_PID   								 int    `json:"TEKU_PID"`
 }
 
 type ValidatorKeyInfo struct {
