@@ -98,7 +98,7 @@ func SaveKeysToFS(
 
 func AddToTeku(validatorPath string, bidId string, password string, validatorKeyFile string) error {
 
-	passwordFilename := fmt.Sprintf("password-%s.txt", bidId)
+	passwordFilename := fmt.Sprintf("keystore-%s.txt", bidId)
 	if err := createFile(filepath.Join(validatorPath, "passwords", passwordFilename), string(password)); err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func AddToTeku(validatorPath string, bidId string, password string, validatorKey
 }
 
 func DeleteFromTeku(validatorPath string, bidId string) error {
-	passwordFilename := fmt.Sprintf("password-%s.txt", bidId)
+	passwordFilename := fmt.Sprintf("keystore-%s.txt", bidId)
 	if err := deleteFile(filepath.Join(validatorPath, "passwords", passwordFilename)); err != nil {
 		return err
 	}
