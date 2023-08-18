@@ -6,5 +6,6 @@
 	"PASSWORD": "$M00THOp3rat0R",
 	"IPFS_GATEWAY": "https://etherfi-goerli.infura-ipfs.io/ipfs",
   "PATH_TO_VALIDATOR": "./validator/teku",
+	"BEACON_API_URL": "https://goerli.beaconcha.in/api/v1/validator/",
 	"TEKU_PID": 1234
 }

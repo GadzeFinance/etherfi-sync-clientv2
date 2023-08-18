@@ -209,7 +209,7 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		}
 
 		// Add query that checks beacon nodes for all active validators
-		if utils.GetExitStatus(validator.ValidatorPubKey) {
+		if utils.GetExitStatus(validator.ValidatorPubKey, config.BEACON_API_URL) {
 			if err != utils.UpdateRowStatus(db, bid.Id, "EXITED") {
 				panic(err)
 			}

@@ -8,10 +8,11 @@ import (
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 )
 
-func GetExitStatus(pubKey string) (bool) {
-	reqUrl := "https:/beaconcha.in/api/v1/validator/" + pubKey 
+func GetExitStatus(pubKey string, beacon_url string) (bool) {
+	reqUrl := fmt.Sprintf("%s%s", beacon_url, pubKey)
 	resp, err := http.Get(reqUrl)
 	if err == nil {
+		defer resp.Body.Close()
 		var response schemas.BeaconResponse
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -26,6 +27,8 @@ func GetExitStatus(pubKey string) (bool) {
 		if response.Data.Status == "exited" {
 			return true
 		}
+	} else {
+		fmt.Println(err)
 	}
 	return false
 }
