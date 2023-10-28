@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"database/sql"
 	"encoding/json"
@@ -8,13 +9,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"time"
-	"bufio"
+	"path/filepath"
 	"strings"
+	"time"
+
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/utils"
-	"github.com/jedib0t/go-pretty/v6/table"
 	_ "github.com/glebarez/go-sqlite"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/robfig/cron"
 )
 
@@ -55,13 +57,13 @@ func main() {
 				os.Exit(1)
 			}
 		})
-	
+
 		c.Start()
 		for {
 			time.Sleep(time.Second)
 		}
 	} else if programType == "changes" {
-	
+
 		// Query database and find all PENDING
 		pendingBids, err := utils.GetRowsByStatus(db, "PENDING")
 		if err != nil {
@@ -75,7 +77,7 @@ func main() {
 		// Print them out each
 		fmt.Println("The following validators with these bid IDs will be modified")
 		t := table.NewWriter()
-    t.SetOutputMirror(os.Stdout)
+		t.SetOutputMirror(os.Stdout)
 		t.AppendHeader(table.Row{"Bid ID", "Public Key", "Change"})
 		for _, bid := range pendingBids {
 			t.AppendRow([]interface{}{bid.Id, bid.Pubkey, "ADD"})
@@ -86,7 +88,6 @@ func main() {
 		}
 
 		t.Render()
-
 
 		// If yes is pressed, copy file contents of each bid and paste them into respective location and update validators in TEKU
 		fmt.Println(`Type "CONFIRM" to apply these changes`)
@@ -109,7 +110,7 @@ func main() {
 				if err := utils.UpdateRowStatus(db, bid.Id, "REMOVED"); err != nil {
 					panic(err)
 				}
-				if err:= utils.RemoveTekuProposerConfig(config.PATH_TO_VALIDATOR, bid.Pubkey); err != nil {
+				if err := utils.RemoveTekuProposerConfig(config.PATH_TO_VALIDATOR, bid.Pubkey); err != nil {
 					panic(err)
 				}
 			}
@@ -134,6 +135,74 @@ func main() {
 			}
 			utils.RefreshTeku(config.TEKU_PID)
 			fmt.Println("Changes added")
+		}
+	} else if programType == "copy_keys" {
+		keys, err := parseKeys()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		outputDir := config.OUTPUT_LOCATION
+
+		baseDir := filepath.Dir(outputDir)
+		kDir := filepath.Join(baseDir, "k")
+		pDir := filepath.Join(baseDir, "p")
+		os.MkdirAll(kDir, 0755)
+		os.MkdirAll(pDir, 0755)
+
+		nodeDirs, err := os.ReadDir(outputDir)
+		if err != nil {
+			fmt.Println("Error reading output directory:", err)
+			return
+		}
+
+		// If keys are not specified, copy all keys
+		if keys == nil {
+			keys = make([]string, len(nodeDirs))
+			for i, dir := range nodeDirs {
+				keys[i] = dir.Name()
+			}
+		}
+
+		dirsMap := make(map[string]bool)
+		for _, dir := range nodeDirs {
+			dirsMap[dir.Name()] = true
+		}
+
+		for _, key := range keys {
+			if dirsMap[key] {
+				// Copy keystore
+				matches, _ := filepath.Glob(filepath.Join(outputDir, key, "keystore-m*"))
+				srcKey := matches[0]
+				destKey := filepath.Join(kDir, fmt.Sprintf("keystore-%s.json", key))
+				if !fileExists(destKey) {
+					err := copyFile(srcKey, destKey)
+					if err != nil {
+						fmt.Println("Error copying keystore:", err)
+					} else {
+						fmt.Printf("Copied keystore to '%s'\n", destKey)
+					}
+				} else {
+					fmt.Printf("Keystore file '%s' already exists; skipping.\n", destKey)
+				}
+
+				// Copy password
+				srcPass := filepath.Join(outputDir, key, "pw.txt")
+				destPass := filepath.Join(pDir, fmt.Sprintf("keystore-%s.txt", key))
+				if !fileExists(destPass) {
+					err := copyFile(srcPass, destPass)
+					if err != nil {
+						fmt.Println("Error copying password:", err)
+					} else {
+						fmt.Printf("Copied password to '%s'\n", destPass)
+					}
+				} else {
+					fmt.Printf("Password file '%s' already exists; skipping.\n", destPass)
+				}
+			} else {
+				fmt.Printf("Key '%s' does not exist; skipping.\n", key)
+			}
 		}
 	}
 }
@@ -202,7 +271,6 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		}
 
 		data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
-
 
 		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, data, bid.Id, validator.ValidatorPubKey, bid.Validator.EtherfiNode, db); err != nil {
 			return err
@@ -275,6 +343,52 @@ func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string, STAKER string) ([
 	}
 
 	return result.Data.Bids, nil
+}
+
+// extracts and validates hexadecimal keys provided as a comma-separated string argument via command line
+func parseKeys() ([]string, error) {
+
+	if len(os.Args) < 3 {
+		// if no keys are provided, return empty array and copy all keys
+		return nil, nil
+	}
+
+	input := os.Args[2]
+
+	parts := strings.Split(input, ",")
+	var keys []string
+
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			return nil, fmt.Errorf("Empty key detected")
+		}
+		if !strings.HasPrefix(trimmed, "0x") {
+			return nil, fmt.Errorf("Invalid key format: %s", trimmed)
+		}
+		keys = append(keys, trimmed)
+	}
+
+	return keys, nil
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
+}
+
+func copyFile(src, dst string) error {
+	input, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(dst, input, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // PrettyPrint to print struct in a readable way

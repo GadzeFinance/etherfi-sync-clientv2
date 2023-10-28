@@ -9,8 +9,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 	"strings"
+	"time"
+
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 )
 
@@ -63,6 +64,8 @@ func SaveKeysToFS(
 	bidPath := filepath.Join(output_location, bidId)
 	if err := createDir(bidPath); err != nil {
 		return err
+	} else {
+		fmt.Println("Created directory: ", bidPath)
 	}
 
 	if err := createFile(filepath.Join(bidPath, "pw.txt"), string(validatorInfo.ValidatorKeyPassword)); err != nil {
@@ -209,7 +212,7 @@ func SaveTekuProposerConfig(validatorPath, pubKey, feeRecipient string) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(tekuProposerConfigFile, updatedJSON, 0644);  err != nil {
+	if err := ioutil.WriteFile(tekuProposerConfigFile, updatedJSON, 0644); err != nil {
 		return err
 	}
 
