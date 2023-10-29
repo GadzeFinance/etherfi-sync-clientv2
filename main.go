@@ -148,8 +148,8 @@ func main() {
 		baseDir := filepath.Dir(outputDir)
 		kDir := filepath.Join(baseDir, "k")
 		pDir := filepath.Join(baseDir, "p")
-		os.MkdirAll(kDir, 0755)
-		os.MkdirAll(pDir, 0755)
+		utils.CreateDir(kDir)
+		utils.CreateDir(pDir)
 
 		nodeDirs, err := os.ReadDir(outputDir)
 		if err != nil {
@@ -176,8 +176,8 @@ func main() {
 				matches, _ := filepath.Glob(filepath.Join(outputDir, key, "keystore-m*"))
 				srcKey := matches[0]
 				destKey := filepath.Join(kDir, fmt.Sprintf("keystore-%s.json", key))
-				if !fileExists(destKey) {
-					err := copyFile(srcKey, destKey)
+				if !utils.FileExists(destKey) {
+					err := utils.CopyFile(srcKey, destKey)
 					if err != nil {
 						fmt.Println("Error copying keystore:", err)
 					} else {
@@ -190,8 +190,8 @@ func main() {
 				// Copy password
 				srcPass := filepath.Join(outputDir, key, "pw.txt")
 				destPass := filepath.Join(pDir, fmt.Sprintf("keystore-%s.txt", key))
-				if !fileExists(destPass) {
-					err := copyFile(srcPass, destPass)
+				if !utils.FileExists(destPass) {
+					err := utils.CopyFile(srcPass, destPass)
 					if err != nil {
 						fmt.Println("Error copying password:", err)
 					} else {
@@ -370,25 +370,6 @@ func parseKeys() ([]string, error) {
 	}
 
 	return keys, nil
-}
-
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return !os.IsNotExist(err)
-}
-
-func copyFile(src, dst string) error {
-	input, err := os.ReadFile(src)
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile(dst, input, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // PrettyPrint to print struct in a readable way
