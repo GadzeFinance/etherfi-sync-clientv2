@@ -9,8 +9,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 	"strings"
+	"time"
+
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 )
 
@@ -56,13 +57,15 @@ func SaveKeysToFS(
 ) error {
 
 	// Step 1: Create directory and add data to the directory
-	if err := createDir(output_location); err != nil {
+	if err := CreateDir(output_location); err != nil {
 		return err
 	}
 
 	bidPath := filepath.Join(output_location, bidId)
-	if err := createDir(bidPath); err != nil {
+	if err := CreateDir(bidPath); err != nil {
 		return err
+	} else {
+		fmt.Println("Created directory: ", bidPath)
 	}
 
 	if err := createFile(filepath.Join(bidPath, "pw.txt"), string(validatorInfo.ValidatorKeyPassword)); err != nil {
@@ -125,7 +128,7 @@ func DeleteFromTeku(validatorPath string, bidId string) error {
 	return nil
 }
 
-func createDir(location string) error {
+func CreateDir(location string) error {
 	if _, err := os.Stat(location); os.IsNotExist(err) {
 		// path/to/whatever does not exist
 		err := os.Mkdir(location, 0755)
@@ -209,7 +212,7 @@ func SaveTekuProposerConfig(validatorPath, pubKey, feeRecipient string) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(tekuProposerConfigFile, updatedJSON, 0644);  err != nil {
+	if err := ioutil.WriteFile(tekuProposerConfigFile, updatedJSON, 0644); err != nil {
 		return err
 	}
 
@@ -259,4 +262,18 @@ func FileExists(filename string) bool {
 		return false
 	}
 	return true
+}
+
+func CopyFile(src, dst string) error {
+	input, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(dst, input, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
