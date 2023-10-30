@@ -189,7 +189,7 @@ func main() {
 				// Copy keystore
 				matches, err := filepath.Glob(filepath.Join(outputDir, key, "keystore-m*"))
 				if err != nil || len(matches) == 0 {
-					fmt.Printf("keystore file not found for '%s'.\n", key)
+					fmt.Printf("Keystore file not found for '%s'.\n", key)
 					continue
 				}
 				srcKey := matches[0]
