@@ -172,21 +172,6 @@ func main() {
 
 		for _, key := range keys {
 			if dirsMap[key] {
-				// Copy keystore
-				matches, _ := filepath.Glob(filepath.Join(outputDir, key, "keystore-m*"))
-				srcKey := matches[0]
-				destKey := filepath.Join(kDir, fmt.Sprintf("keystore-%s.json", key))
-				if !utils.FileExists(destKey) {
-					err := utils.CopyFile(srcKey, destKey)
-					if err != nil {
-						fmt.Println("Error copying keystore:", err)
-					} else {
-						fmt.Printf("Copied keystore to '%s'\n", destKey)
-					}
-				} else {
-					fmt.Printf("Keystore file '%s' already exists; skipping.\n", destKey)
-				}
-
 				// Copy password
 				srcPass := filepath.Join(outputDir, key, "pw.txt")
 				destPass := filepath.Join(pDir, fmt.Sprintf("keystore-%s.txt", key))
@@ -199,6 +184,25 @@ func main() {
 					}
 				} else {
 					fmt.Printf("Password file '%s' already exists; skipping.\n", destPass)
+				}
+
+				// Copy keystore
+				matches, err := filepath.Glob(filepath.Join(outputDir, key, "keystore-m*"))
+				if err != nil || len(matches) == 0 {
+					fmt.Printf("keystore file not found for '%s'.\n", key)
+					continue
+				}
+				srcKey := matches[0]
+				destKey := filepath.Join(kDir, fmt.Sprintf("keystore-%s.json", key))
+				if !utils.FileExists(destKey) {
+					err := utils.CopyFile(srcKey, destKey)
+					if err != nil {
+						fmt.Println("Error copying keystore:", err)
+					} else {
+						fmt.Printf("Copied keystore to '%s'\n", destKey)
+					}
+				} else {
+					fmt.Printf("Keystore file '%s' already exists; skipping.\n", destKey)
 				}
 			} else {
 				fmt.Printf("Key '%s' does not exist; skipping.\n", key)
