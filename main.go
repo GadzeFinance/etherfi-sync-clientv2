@@ -60,7 +60,7 @@ func main() {
 	programType := os.Args[1]
 	if programType == "listen" {
 		c := cron.New()
-		c.AddFunc("1 * * * *", func() {
+		c.AddFunc("* * * * *", func() {
 
 			if err := cronjob(config, db); err != nil {
 				fmt.Printf("Error executing function: %s\n", err)
@@ -169,7 +169,7 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 	}
 
 	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER, config.STAKER)
-
+	fmt.Println("bids: ", bids)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return err
@@ -194,6 +194,7 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 		ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
 
 		IPFSResponse, err := utils.FetchFromIPFS(config.IPFS_GATEWAY, ipfsHashForEncryptedValidatorKey)
+		fmt.Println("IPFSResponse: ", IPFSResponse)
 		if err != nil {
 			return err
 		}
@@ -231,9 +232,11 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 // This function fetch bids from the Graph
 func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string, STAKER string) ([]schemas.BidType, error) {
 
-	validatorFilter := `{ phase: VALIDATOR_REGISTERED }`
+	//validatorFilter := `{ phase: VALIDATOR_REGISTERED }`
+	validatorFilter := `{ phase: LIVE }`
 	if STAKER != "" {
-		validatorFilter = `{ phase: VALIDATOR_REGISTERED, BNFTHolder: "` + STAKER + `"}`
+		//validatorFilter = `{ phase: VALIDATOR_REGISTERED, BNFTHolder: "` + STAKER + `"}`
+		validatorFilter = `{ phase: LIVE, BNFTHolder: "` + STAKER + `"}`
 	}
 
 	// the query to fetch bids
