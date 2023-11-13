@@ -1,7 +1,7 @@
 {
-	"GRAPH_URL": "https://api.studio.thegraph.com/proxy/41778/etherfi-phase2-testold/version/latest",
-	"BIDDER": "0xEF545097fdcfd24adD3ba7652D238acbDE825ff7",
-	"PRIVATE_KEYS_FILE_LOCATION": "privateEtherfiKeystore-1684872754180.json",
+	"GRAPH_URL": "https://api.studio.thegraph.com/proxy/41778/etherfi-dev-goerli-3/version/latest",
+	"BIDDER": "0xD0d7F8a5a86d8271ff87ff24145Cf40CEa9F7A39",
+	"PRIVATE_KEYS_FILE_LOCATION": "privateEtherfiKeystore-1699550135084.json",
 	"OUTPUT_LOCATION": "./output",
 	"PASSWORD": "Password123!",
 	"IPFS_GATEWAY": "https://ether-fi-mainnet.infura-ipfs.io/ipfs",
