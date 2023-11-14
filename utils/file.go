@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	"strings"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 )
 
@@ -46,14 +45,7 @@ func FetchFromIPFS(gatewayURL string, cid string) (schemas.IPFSResponseType, err
 	return ipfsResponse, nil
 }
 
-func SaveKeysToFS(
-	output_location string,
-	validatorInfo schemas.ValidatorKeyInfo,
-	bidId string,
-	validatorPublicKey string,
-	nodeAddress string,
-	db *sql.DB,
-) error {
+func SaveKeysToFS(output_location string, validatorInfo schemas.ValidatorKeyInfo, bidId string, validatorPublicKey string, nodeAddress string, db *sql.DB) error {
 
 	// Step 1: Create directory and add data to the directory
 	if err := createDir(output_location); err != nil {
@@ -65,19 +57,35 @@ func SaveKeysToFS(
 		return err
 	}
 
+	// Passwords
+	// Passwords are stored in a non-destructive manner in two places:
+	// 			1. ./output/passwords/<bidId>.txt
+	// 			2. ./output/<bidId>/pw.txt
+	// The first is for user friendly completeness.
+	// The second is for teku validator client to read from.
 	if err := createFile(filepath.Join(bidPath, "pw.txt"), string(validatorInfo.ValidatorKeyPassword)); err != nil {
 		return err
 	}
+	if err := createFile(output_location + "/passwords/" + bidId + ".txt", string(validatorInfo.ValidatorKeyPassword)); err != nil {
+		return err
+	}
 
+	// Keystores
+	// We also duplicate the keystores with a .json file for teku clieant to read from.
+	if err := createFile(filepath.Join(bidPath, string(validatorInfo.KeystoreName)), string(validatorInfo.ValidatorKeyFile)); err != nil {
+		return err
+	}
+	if err := createFile(output_location + "/keys/" + bidId + ".json", string(validatorInfo.ValidatorKeyFile)); err != nil { 
+		return err
+	}
+
+	// Validator Public key
 	if err := createFile(filepath.Join(bidPath, "pubkey.txt"), validatorPublicKey); err != nil {
 		return err
 	}
 
+	// Withdrawal contract address
 	if err := createFile(filepath.Join(bidPath, "node_address.txt"), nodeAddress); err != nil {
-		return err
-	}
-
-	if err := createFile(filepath.Join(bidPath, string(validatorInfo.KeystoreName)), string(validatorInfo.ValidatorKeyFile)); err != nil {
 		return err
 	}
 
@@ -96,44 +104,25 @@ func SaveKeysToFS(
 	return nil
 }
 
-func AddToTeku(validatorPath string, bidId string, password string, validatorKeyFile string) error {
+func createDir(path string) error {
+	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+        return err
+    }
+	// Create keys and passwords directory only if we're creating our output directory
+	if path == "output" {
+		keysPath := filepath.Join(path, "keys")
+		passwordPath := filepath.Join(path, "passwords")
 
-	passwordFilename := fmt.Sprintf("keystore-%s.txt", bidId)
-	if err := createFile(filepath.Join(validatorPath, "passwords", passwordFilename), string(password)); err != nil {
-		return err
-	}
+		if err := os.MkdirAll(keysPath, os.ModePerm); err != nil {
+			return err
+		}
 
-	keystoreFileName := fmt.Sprintf("keystore-%s.json", bidId)
-	if err := createFile(filepath.Join(validatorPath, "keys", keystoreFileName), string(validatorKeyFile)); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func DeleteFromTeku(validatorPath string, bidId string) error {
-	passwordFilename := fmt.Sprintf("keystore-%s.txt", bidId)
-	if err := deleteFile(filepath.Join(validatorPath, "passwords", passwordFilename)); err != nil {
-		return err
-	}
-
-	keystoreFileName := fmt.Sprintf("keystore-%s.json", bidId)
-	if err := deleteFile(filepath.Join(validatorPath, "keys", keystoreFileName)); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func createDir(location string) error {
-	if _, err := os.Stat(location); os.IsNotExist(err) {
-		// path/to/whatever does not exist
-		err := os.Mkdir(location, 0755)
-		if err != nil {
+		if err := os.MkdirAll(passwordPath, os.ModePerm); err != nil {
 			return err
 		}
 	}
-	return nil
+
+    return nil
 }
 
 func createFile(location string, content string) error {
@@ -141,19 +130,6 @@ func createFile(location string, content string) error {
 		return err
 	}
 	ioutil.WriteFile(location, []byte(content), 0644)
-	return nil
-}
-
-func deleteFile(filePath string) error {
-	if exists := FileExists(filePath); !exists {
-		return nil
-	}
-
-	err := os.Remove(filePath)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -172,91 +148,4 @@ func ExtractPrivateKeysFromFS(location string) (schemas.KeyStoreFile, error) {
 	}
 
 	return payload, nil
-}
-
-func SaveTekuProposerConfig(validatorPath, pubKey, feeRecipient string) error {
-
-	tekuProposerConfigFile := filepath.Join(validatorPath, "teku_proposer_config.json")
-	if exists := FileExists(tekuProposerConfigFile); !exists {
-		fmt.Println("teku_proposer_config.json does not exist")
-		return nil
-	}
-
-	fileContent, err := ioutil.ReadFile(tekuProposerConfigFile)
-	if err != nil {
-		return err
-	}
-
-	var config schemas.Configuration
-	err = json.Unmarshal(fileContent, &config)
-	if err := json.Unmarshal(fileContent, &config); err != nil {
-		return err
-	}
-
-	if config.ProposerConfig == nil {
-		config.ProposerConfig = make(map[string]schemas.ProposerEntry)
-	}
-
-	pubKey = strings.ToLower(strings.TrimSpace(pubKey))
-	feeRecipient = strings.ToLower(strings.TrimSpace(feeRecipient))
-
-	config.ProposerConfig[pubKey] = schemas.ProposerEntry{
-		FeeRecipient: feeRecipient,
-	}
-
-	updatedJSON, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(tekuProposerConfigFile, updatedJSON, 0644);  err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func RemoveTekuProposerConfig(validatorPath, pubKey string) error {
-	tekuProposerConfigFile := filepath.Join(validatorPath, "teku_proposer_config.json")
-
-	if exists := FileExists(tekuProposerConfigFile); !exists {
-		fmt.Println("teku_proposer_config.json does not exist")
-		return nil
-	}
-
-	fileContent, err := ioutil.ReadFile(tekuProposerConfigFile)
-	if err != nil {
-		return err
-	}
-
-	var config schemas.Configuration
-	err = json.Unmarshal(fileContent, &config)
-	if err != nil {
-		return err
-	}
-
-	pubKey = strings.ToLower(strings.TrimSpace(pubKey))
-
-	if config.ProposerConfig != nil {
-		delete(config.ProposerConfig, pubKey)
-	}
-
-	updatedJSON, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(tekuProposerConfigFile, updatedJSON, 0644); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func FileExists(filename string) bool {
-	_, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return true
 }

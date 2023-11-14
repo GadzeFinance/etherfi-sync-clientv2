@@ -1,9 +1,11 @@
 output/
 output/*
-privateEtherfiKeystore-1682692241467.json
 config.json
 data.db
 etherfi-sync-clientv2
-privateEtherfiKeystore-1684500211284.json
-privateEtherfiKeystore-1684872754180.json
-privateEtherfiKeystore-1684504880498.json
+privateEtherfiKeystore*.json
+publicEtherfiKeystore*.json
+
+NO-*
+
+.DS_Store

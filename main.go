@@ -9,171 +9,82 @@ import (
 	"net/http"
 	"os"
 	"time"
-	"bufio"
-	"strings"
+
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/utils"
-	"github.com/jedib0t/go-pretty/v6/table"
+
 	_ "github.com/glebarez/go-sqlite"
-	"github.com/robfig/cron"
 )
 
 func main() {
-
-	config, err := utils.GetConfig("./config.json")
-	if err != nil {
-		fmt.Println("Failed to load config")
-		return
+	if err := run(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
+}
+
+func run() error {
+	config, err := utils.GetAndCheckConfig()
+	if err != nil {
+		fmt.Printf("Failed to load config: %v\n", err)
+		return err
+	}
+
+	fmt.Println("Starting EtherFi Sync Client:")
+	fmt.Println("Operator Address: ", config.BIDDER)
+	fmt.Println("Output directory: ", config.OUTPUT_LOCATION)
 
 	db, err := sql.Open("sqlite", "data.db")
 	if err != nil {
 		fmt.Println(err)
+		return err
 	}
 	defer db.Close()
 
 	err = utils.CreateTable(db)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return err
 	}
 
-	if len(os.Args) < 2 {
-		fmt.Println("Specify 'listen' or 'changes' argument")
-		return
-	}
-
-	programType := os.Args[1]
-	if programType == "listen" {
-		fmt.Println("Starting Sync Client!")
-		fmt.Println("Configuration values: ")
-		fmt.Println(PrettyPrint(config))
-		c := cron.New()
-		c.AddFunc("1 * * * *", func() {
-			if err := cronjob(config, db); err != nil {
-				fmt.Printf("Error executing function: %s\n", err)
-				os.Exit(1)
-			}
-		})
-	
-		c.Start()
-		for {
-			time.Sleep(time.Second)
-		}
-	} else if programType == "changes" {
-	
-		// Query database and find all PENDING
-		pendingBids, err := utils.GetRowsByStatus(db, "PENDING")
-		if err != nil {
-			panic(err)
-		}
-		// Query all and find those that are EXITED
-		exitedBids, err := utils.GetRowsByStatus(db, "EXITED")
-		if err != nil {
-			panic(err)
-		}
-		// Print them out each
-		fmt.Println("The following validators with these bid IDs will be modified")
-		t := table.NewWriter()
-    t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"Bid ID", "Public Key", "Change"})
-		for _, bid := range pendingBids {
-			t.AppendRow([]interface{}{bid.Id, bid.Pubkey, "ADD"})
-		}
-
-		for _, bid := range exitedBids {
-			t.AppendRow([]interface{}{bid.Id, bid.Pubkey, "REMOVE"})
-		}
-
-		t.Render()
-
-
-		// If yes is pressed, copy file contents of each bid and paste them into respective location and update validators in TEKU
-		fmt.Println(`Type "CONFIRM" to apply these changes`)
-		fmt.Print("Enter text: ")
-		reader := bufio.NewReader(os.Stdin)
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("An error occured while reading input. Please try again", err)
-			return
-		}
-		input = strings.TrimSuffix(input, "\n")
-		fmt.Println(input)
-
-		// Refresh Teku
-		if input == "CONFIRM" {
-			for _, bid := range exitedBids {
-				if err := utils.DeleteFromTeku(config.PATH_TO_VALIDATOR, bid.Id); err != nil {
-					panic(err)
-				}
-				if err := utils.UpdateRowStatus(db, bid.Id, "REMOVED"); err != nil {
-					panic(err)
-				}
-				if err:= utils.RemoveTekuProposerConfig(config.PATH_TO_VALIDATOR, bid.Pubkey); err != nil {
-					panic(err)
-				}
-			}
-			for _, bidItem := range pendingBids {
-
-				bid, err := utils.GetBid(db, bidItem.Id)
-				if err != nil {
-					panic(err)
-				}
-				if config.PATH_TO_VALIDATOR != "" {
-					if err := utils.SaveTekuProposerConfig(config.PATH_TO_VALIDATOR, bid.Pubkey, bid.NodeAddress); err != nil {
-						panic(err)
-					}
-					if err := utils.AddToTeku(config.PATH_TO_VALIDATOR, bid.Id, bid.Password, bid.Keystore); err != nil {
-						panic(err)
-					}
-				}
-
-				if err := utils.UpdateRowStatus(db, bidItem.Id, "ADDED"); err != nil {
-					panic(err)
-				}
-			}
-			utils.RefreshTeku(config.TEKU_PID)
-			fmt.Println("Changes added")
-		}
-	}
+	fetchValidatorKeys(config, db)
+	return nil
 }
 
-func cronjob(config schemas.Config, db *sql.DB) error {
+func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 
-	fmt.Println("Searching for new stake requests 👀")
-
+	fmt.Println("Fetching Validator Keys from IPFS...")
 	privateKey, err := utils.ExtractPrivateKeysFromFS(config.PRIVATE_KEYS_FILE_LOCATION)
 	if err != nil {
 		return err
 	}
 
-	isUsingCBC := false
 	// For compatibility, if the authTag is empty, we know it's CBC mode
+	isUsingCBC := false
 	if privateKey.AuthTag == "" {
 		isUsingCBC = true
 	}
 
-	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER, config.STAKER)
-
+	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
 	if err != nil {
-		fmt.Println("Error: ", err)
 		return err
 	}
 
+	fmt.Println("Found ", len(bids), " stake requests.")
 	for i, bid := range bids {
 		_ = i
 
 		count, err := utils.GetIDCount(db, bid.Id)
 		if err != nil {
-			fmt.Println("Error querying database")
 			return err
 		}
 
 		if count > 0 {
+			fmt.Println(`Skipping stake request for validator: ` + bid.Id + ` because it has already been processed.`)
 			continue
 		}
 
-		fmt.Println(`> start processing stake request from: ` + bid.Validator.BNFTHolder)
+		fmt.Println(`Processing stake request for validator: ` + bid.Id + ` and BNFT Holder: ` + bid.Validator.BNFTHolder)
 
 		validator := bid.Validator
 		ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
@@ -203,16 +114,8 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 
 		data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
 
-
 		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, data, bid.Id, validator.ValidatorPubKey, bid.Validator.EtherfiNode, db); err != nil {
 			return err
-		}
-
-		// Add query that checks beacon nodes for all active validators
-		if utils.GetExitStatus(validator.ValidatorPubKey, config.BEACON_API_URL) {
-			if err != utils.UpdateRowStatus(db, bid.Id, "EXITED") {
-				panic(err)
-			}
 		}
 	}
 
@@ -220,19 +123,13 @@ func cronjob(config schemas.Config, db *sql.DB) error {
 }
 
 // This function fetch bids from the Graph
-// TODO: Paginate this
-func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string, STAKER string) ([]schemas.BidType, error) {
-
-	validatorFilter := `{ phase: VALIDATOR_REGISTERED }`
-	if STAKER != "" {
-		validatorFilter = `{ phase: VALIDATOR_REGISTERED, BNFTHolder: "` + STAKER + `"}`
-	}
-
+func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string) ([]schemas.BidType, error) {
 	// the query to fetch bids
+	// TODO we have first 1000 here that's going to have to be fixed in the near future
 	queryJsonData := map[string]string{
 		"query": `
 		  {
-      	bids(where: { bidderAddress: "` + BIDDER + `", status: "WON", validator_not: null, validator_: ` + validatorFilter + ` }, first: 1000) {
+      	bids(where: { bidderAddress: "` + BIDDER + `", status: "WON", validator_not: null }, first: 1000) {
         	id
         	bidderAddress
         	pubKeyIndex
@@ -275,10 +172,4 @@ func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string, STAKER string) ([
 	}
 
 	return result.Data.Bids, nil
-}
-
-// PrettyPrint to print struct in a readable way
-func PrettyPrint(i interface{}) string {
-	s, _ := json.MarshalIndent(i, "", "\t")
-	return string(s)
 }

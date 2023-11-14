@@ -1,10 +1,7 @@
-# Go compiler
 GO := go
 
-# Output directory
 OUTPUT_DIR := output
 
-# Binary name
 BINARY_NAME := etherfi-sync-clientv2
 
 .PHONY: all clean
@@ -17,6 +14,8 @@ $(BINARY_NAME):
 	rm -rf $(OUTPUT_DIR)/*
 	rm -f data.db
 	$(GO) build
+	./$(BINARY_NAME)
+
 
 # Clean up the binary and output directory
 clean:

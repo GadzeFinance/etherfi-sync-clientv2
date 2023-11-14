@@ -1,11 +1,8 @@
 {
-	"GRAPH_URL": "https://api.studio.thegraph.com/query/41778/etherfi-goerli/version/latest",
-	"BIDDER": "0xF88866238ecE28A41e050b04360423a5d1181d49",
-	"PRIVATE_KEYS_FILE_LOCATION": "./privateEtherfiKeystore-1684504880498.json",
+	"GRAPH_URL": "https://api.studio.thegraph.com/query/41778/etherfi-dev-goerli-3/version/latest",
+	"BIDDER": "0xD0d7F8a5a86d8271ff87ff24145Cf40CEa9F7A39",
+	"PRIVATE_KEYS_FILE_LOCATION": "./NO-admind0d/privateEtherfiKeystore-1699550135084.json",
 	"OUTPUT_LOCATION": "output",
-	"PASSWORD": "$M00THOp3rat0R",
-	"IPFS_GATEWAY": "https://etherfi-goerli.infura-ipfs.io/ipfs",
-  "PATH_TO_VALIDATOR": "./validator/teku",
-	"BEACON_API_URL": "https://goerli.beaconcha.in/api/v1/validator/",
-	"TEKU_PID": 1234
+	"PASSWORD": "Password123!",
+	"IPFS_GATEWAY": "https://etherfi-goerli.infura-ipfs.io/ipfs"
 }

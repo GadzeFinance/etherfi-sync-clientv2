@@ -3,14 +3,10 @@ package schemas
 type Config struct {
 	GRAPH_URL                  string `json:"GRAPH_URL"`
 	BIDDER                     string `json:"BIDDER"`
-	STAKER                     string `json:"STAKER"`
 	PRIVATE_KEYS_FILE_LOCATION string `json:"PRIVATE_KEYS_FILE_LOCATION"`
 	OUTPUT_LOCATION            string `json:"OUTPUT_LOCATION"`
 	PASSWORD                   string `json:"PASSWORD"`
 	IPFS_GATEWAY               string `json:"IPFS_GATEWAY"`
-	PATH_TO_VALIDATOR          string `json:"PATH_TO_VALIDATOR"`
-	BEACON_API_URL             string `json:"BEACON_API_URL"`
-	TEKU_PID   								 int    `json:"TEKU_PID"`
 }
 
 type ValidatorKeyInfo struct {
@@ -75,28 +71,6 @@ type Configuration struct {
 
 type ProposerEntry struct {
 	FeeRecipient string `json:"fee_recipient"`
-}
-
-type BeaconResponse struct {
-	Status string `json:"status"`
-	Data   BeaconResponseData   `json:"data"`
-}
-
-type BeaconResponseData struct {
-	ActivationEligibilityEpoch int64  `json:"activationeligibilityepoch"`
-	ActivationEpoch            int64  `json:"activationepoch"`
-	Balance                    int64  `json:"balance"`
-	EffectiveBalance           int64  `json:"effectivebalance"`
-	ExitEpoch                  int64  `json:"exitepoch"`
-	LastAttestationSlot        int64  `json:"lastattestationslot"`
-	Name                       string `json:"name"`
-	PubKey                     string `json:"pubkey"`
-	Slashed                    bool   `json:"slashed"`
-	Status                     string `json:"status"`
-	ValidatorIndex             int64  `json:"validatorindex"`
-	WithdrawableEpoch          int64  `json:"withdrawableepoch"`
-	WithdrawalCredentials      string `json:"withdrawalcredentials"`
-	TotalWithdrawals           int64  `json:"total_withdrawals"`
 }
 
 type TableBid struct {
