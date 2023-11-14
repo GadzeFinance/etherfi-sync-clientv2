@@ -17,6 +17,8 @@ $(BINARY_NAME):
 	rm -rf $(OUTPUT_DIR)/*
 	rm -f data.db
 	$(GO) build
+	./$(BINARY_NAME)
+
 
 # Clean up the binary and output directory
 clean:
