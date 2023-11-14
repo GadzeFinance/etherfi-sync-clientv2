@@ -57,8 +57,6 @@ func SaveKeysToFS(output_location string, validatorInfo schemas.ValidatorKeyInfo
 		return err
 	}
 
-	fmt.Println("********")
-	fmt.Println(output_location, bidPath)
 	// Passwords
 	// Passwords are stored in a non-destructive manner in two places:
 	// 			1. ./output/passwords/<bidId>.txt
@@ -110,9 +108,8 @@ func createDir(path string) error {
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
         return err
     }
-	print("path: ", path)
 	// Create keys and passwords directory only if we're creating our output directory
-	if path == "./output" {
+	if path == "output" {
 		keysPath := filepath.Join(path, "keys")
 		passwordPath := filepath.Join(path, "passwords")
 
