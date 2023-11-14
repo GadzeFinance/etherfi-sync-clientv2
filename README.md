@@ -43,10 +43,12 @@ touch config.json
 ```
 
 ## How to make a release
-1. Checkout into the dev branch
-2. Run `git pull origin dev` to make sure you have all the changes
+1. Checkout into the master branch
+2. Run `git pull origin master` to make sure you have all the changes
 3. Update the `tag_name` and `release_name` in `.github/workflows/makerelease.yaml` to the new version of the release
 4. Commit your changes
-5. Run `git push origin master`
+5. Go to the actions page in the github repo
+6. Click on `Create Release with Binary` in the side bar
+7. Trigger the workflow using the `Run Workflow` button
 > Note: Pushes to the master branch will trigger a release
 

@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 )
 
@@ -58,6 +57,8 @@ func SaveKeysToFS(output_location string, validatorInfo schemas.ValidatorKeyInfo
 		return err
 	}
 
+	fmt.Println("********")
+	fmt.Println(output_location, bidPath)
 	// Passwords
 	// Passwords are stored in a non-destructive manner in two places:
 	// 			1. ./output/passwords/<bidId>.txt
@@ -90,14 +91,14 @@ func SaveKeysToFS(output_location string, validatorInfo schemas.ValidatorKeyInfo
 		return err
 	}
 
-	query := "REPLACE INTO winning_bids (id, pubkey, password, nodeAddress) VALUES (?, ?, ?, ?)"
+	query := "REPLACE INTO winning_bids (id, pubkey, password, nodeAddress, keystore) VALUES (?, ?, ?, ?, ?)"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(bidId, validatorPublicKey, string(validatorInfo.ValidatorKeyPassword), nodeAddress)
+	_, err = stmt.Exec(bidId, validatorPublicKey, string(validatorInfo.ValidatorKeyPassword), nodeAddress, string(validatorInfo.ValidatorKeyFile))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -109,7 +110,7 @@ func createDir(path string) error {
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
         return err
     }
-
+	print("path: ", path)
 	// Create keys and passwords directory only if we're creating our output directory
 	if path == "./output" {
 		keysPath := filepath.Join(path, "keys")
@@ -150,12 +151,4 @@ func ExtractPrivateKeysFromFS(location string) (schemas.KeyStoreFile, error) {
 	}
 
 	return payload, nil
-}
-
-func FileExists(filename string) error {
-	_, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("file %s does not exist", filename)
-	}
-	return err
 }

@@ -63,3 +63,26 @@ type KeyPair struct {
 	PublicKey  string `json:"publicKey"`
 	PrivateKey string `json:"privateKey"`
 }
+
+type Configuration struct {
+	ProposerConfig map[string]ProposerEntry `json:"proposer_config"`
+	DefaultConfig  ProposerEntry            `json:"default_config"`
+}
+
+type ProposerEntry struct {
+	FeeRecipient string `json:"fee_recipient"`
+}
+
+type TableBid struct {
+	Id string
+	Pubkey string
+	Password string
+	NodeAddress string
+	SyncStatus string
+	Keystore string
+}
+
+type DisplayBid struct {
+	Id string
+	Pubkey string
+}

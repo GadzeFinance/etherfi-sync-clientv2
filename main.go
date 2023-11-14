@@ -8,9 +8,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/utils"
+
 	_ "github.com/glebarez/go-sqlite"
 )
 
@@ -31,16 +31,7 @@ func main() {
 	}
 	defer db.Close()
 
-	// Create the table if it doesn't exist
-	createTableQuery := `
-		CREATE TABLE IF NOT EXISTS winning_bids (
-			id STRING PRIMARY KEY,
-			pubkey TEXT,
-			password TEXT,
-			nodeAddress TEXT,
-			executed BOOLEAN DEFAULT false
-		);`
-	_, err = db.Exec(createTableQuery)
+	err = utils.CreateTable(db)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -68,7 +59,7 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 		return err
 	}
 
-	fmt.Println("Found ", len(bids), " new stake requests.")
+	fmt.Println("Found ", len(bids), " stake requests.")
 	for i, bid := range bids {
 		_ = i
 
@@ -78,6 +69,7 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 		}
 
 		if count > 0 {
+			fmt.Println(`Skipping stake request for validator: ` + bid.Id + ` because it has already been processed.`)
 			continue
 		}
 
@@ -103,7 +95,6 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 
 		pubKeyArray := validatorKey.PublicKeys
 		privKeyArray := validatorKey.PrivateKeys
-
 		keypairForIndex, err := utils.GetKeyPairByPubKeyIndex(bid.PubKeyIndex, privKeyArray, pubKeyArray)
 
 		if err != nil {

@@ -5,16 +5,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"reflect"
-
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 )
 
 func GetAndCheckConfig() (schemas.Config, error) {
-    err := FileExists("./config.json")
-    if err != nil {
-        return schemas.Config{}, err
-    }
-
     content, err := ioutil.ReadFile("./config.json")
     if err != nil {
         fmt.Println("Error when opening file: ", err)
