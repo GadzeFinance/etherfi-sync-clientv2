@@ -5,7 +5,6 @@ etherfi-sync-clientv2
 privateEtherfiKeystore*.json
 publicEtherfiKeystore*.json
 
-NO-etherfi
-NO-finoa
+NO-*
 
 .DS_Store
