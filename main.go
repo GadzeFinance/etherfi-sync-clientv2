@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
+
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 	"github.com/GadzeFinance/etherfi-sync-clientv2/utils"
 
@@ -15,10 +17,17 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	config, err := utils.GetAndCheckConfig()
 	if err != nil {
 		fmt.Printf("Failed to load config: %v\n", err)
-		return
+		return err
 	}
 
 	fmt.Println("Starting EtherFi Sync Client:")
@@ -28,16 +37,18 @@ func main() {
 	db, err := sql.Open("sqlite", "data.db")
 	if err != nil {
 		fmt.Println(err)
+		return err
 	}
 	defer db.Close()
 
 	err = utils.CreateTable(db)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return err
 	}
 
 	fetchValidatorKeys(config, db)
+	return nil
 }
 
 func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
@@ -162,4 +173,3 @@ func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string) ([]schemas.BidTyp
 
 	return result.Data.Bids, nil
 }
-
