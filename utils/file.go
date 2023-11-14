@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"bufio"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"time"
 
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
@@ -48,7 +46,7 @@ func FetchFromIPFS(gatewayURL string, cid string) (schemas.IPFSResponseType, err
 	return ipfsResponse, nil
 }
 
-func SaveKeysToFS(output_location string, consensus_location string, client_location string, validatorInfo schemas.ValidatorKeyInfo, bidId string, validatorPublicKey string, nodeAddress string, db *sql.DB) error {
+func SaveKeysToFS(output_location string, validatorInfo schemas.ValidatorKeyInfo, bidId string, validatorPublicKey string, nodeAddress string, db *sql.DB) error {
 
 	// Step 1: Create directory and add data to the directory
 	if err := createDir(output_location); err != nil {
@@ -60,19 +58,35 @@ func SaveKeysToFS(output_location string, consensus_location string, client_loca
 		return err
 	}
 
+	// Passwords
+	// Passwords are stored in a non-destructive manner in two places:
+	// 			1. ./output/passwords/<bidId>.txt
+	// 			2. ./output/<bidId>/pw.txt
+	// The first is for user friendly completeness.
+	// The second is for teku validator client to read from.
 	if err := createFile(filepath.Join(bidPath, "pw.txt"), string(validatorInfo.ValidatorKeyPassword)); err != nil {
 		return err
 	}
+	if err := createFile(output_location + "/passwords/" + bidId + ".txt", string(validatorInfo.ValidatorKeyPassword)); err != nil {
+		return err
+	}
 
+	// Keystores
+	// We also duplicate the keystores with a .json file for teku clieant to read from.
+	if err := createFile(filepath.Join(bidPath, string(validatorInfo.KeystoreName)), string(validatorInfo.ValidatorKeyFile)); err != nil {
+		return err
+	}
+	if err := createFile(output_location + "/keys/" + bidId + ".json", string(validatorInfo.ValidatorKeyFile)); err != nil { 
+		return err
+	}
+
+	// Validator Public key
 	if err := createFile(filepath.Join(bidPath, "pubkey.txt"), validatorPublicKey); err != nil {
 		return err
 	}
 
+	// Withdrawal contract address
 	if err := createFile(filepath.Join(bidPath, "node_address.txt"), nodeAddress); err != nil {
-		return err
-	}
-
-	if err := createFile(filepath.Join(bidPath, string(validatorInfo.KeystoreName)), string(validatorInfo.ValidatorKeyFile)); err != nil {
 		return err
 	}
 
@@ -91,15 +105,26 @@ func SaveKeysToFS(output_location string, consensus_location string, client_loca
 	return nil
 }
 
-func createDir(location string) error {
-	if _, err := os.Stat(location); os.IsNotExist(err) {
-		// path/to/whatever does not exist
-		err := os.Mkdir(location, 0755)
-		if err != nil {
+func createDir(path string) error {
+	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+        return err
+    }
+
+	// Create keys and passwords directory only if we're creating our output directory
+	if path == "./output" {
+		keysPath := filepath.Join(path, "keys")
+		passwordPath := filepath.Join(path, "passwords")
+
+		if err := os.MkdirAll(keysPath, os.ModePerm); err != nil {
+			return err
+		}
+
+		if err := os.MkdirAll(passwordPath, os.ModePerm); err != nil {
 			return err
 		}
 	}
-	return nil
+
+    return nil
 }
 
 func createFile(location string, content string) error {
@@ -125,51 +150,6 @@ func ExtractPrivateKeysFromFS(location string) (schemas.KeyStoreFile, error) {
 	}
 
 	return payload, nil
-}
-
-func getConfig() (schemas.Config, error) {
-
-	err := FileExists("./config.json")
-	if err != nil {
-		return schemas.Config{}, err
-	}
-	// file exists, do something with it
-
-	// read the file
-	content, err := ioutil.ReadFile("./config.json")
-	if err != nil {
-		fmt.Println("Error when opening file: ", err)
-		return schemas.Config{}, err
-	}
-
-	// parse the config data from the json
-	var data schemas.Config
-	err = json.Unmarshal(content, &data)
-	if err != nil {
-		fmt.Println("config.json has invalid form", err)
-		return schemas.Config{}, err
-	}
-
-	dataValue := reflect.ValueOf(&data).Elem()
-	typeOfData := dataValue.Type()
-
-	for i := 0; i < dataValue.NumField(); i++ {
-		fieldValue := dataValue.Field(i).Interface()
-		fieldName := typeOfData.Field(i).Name
-
-		if fieldValue == "" {
-			field := dataValue.Field(i)
-			if field.Kind() == reflect.String {
-				fmt.Printf("Value for %s is missing, enter value: ", fieldName)
-				scanner := bufio.NewScanner(os.Stdin)
-				scanner.Scan()
-				value := scanner.Text()
-				field.SetString(value)
-			}
-		}
-	}
-
-	return data, nil
 }
 
 func FileExists(filename string) error {

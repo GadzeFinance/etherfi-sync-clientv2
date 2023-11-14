@@ -10,7 +10,7 @@ import (
 
 func TestFetchFromIPFSCBC (t *testing.T) {
 
-	config, _ := utils.GetConfig("../config.json")
+	config, _ := utils.GetAndCheckConfig()
 
 	for _, hash := range GetIPFSHashes() {
 		IPFSResponse, err := utils.FetchFromIPFS(config.IPFS_GATEWAY, hash)
@@ -120,7 +120,7 @@ func TestDecryptGCMPrivatekey (t *testing.T) {
 
 func TestDecryptValidatorKeysCBC(t *testing.T) {
 
-	config, _ := utils.GetConfig("../config.json")
+	config, _ := utils.GetAndCheckConfig()
 
 	IPFSResponse, err := utils.FetchFromIPFS(config.IPFS_GATEWAY, "QmX4eYKNXVmBpa4ZqBxKAZNgPa3KpTB1Ub5KBJTRtNqAaf")
 	if err != nil {
@@ -142,7 +142,7 @@ func TestDecryptValidatorKeysCBC(t *testing.T) {
 
 func TestDecryptValidatorKeysGCM(t *testing.T) {
 
-	config, _ := utils.GetConfig("../config.json")
+	config, _ := utils.GetAndCheckConfig()
 
 	IPFSResponse, err := utils.FetchFromIPFS(config.IPFS_GATEWAY, "QmUwkoSJBoq8tNG8sNkuxkf6w8ADMrARLqzWqk7qYCDBJw")
 	if err != nil {
