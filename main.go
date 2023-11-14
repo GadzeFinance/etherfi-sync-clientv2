@@ -122,54 +122,62 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 	return nil
 }
 
-// This function fetch bids from the Graph
 func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string) ([]schemas.BidType, error) {
-	// the query to fetch bids
-	// TODO we have first 1000 here that's going to have to be fixed in the near future
-	queryJsonData := map[string]string{
-		"query": `
+	var allBids []schemas.BidType
+	itemsPerPage := 100 // Number of items to fetch per page
+
+	for skip := 0; ; skip += itemsPerPage {
+		fmt.Printf("Fetching bids %d to %d\n", skip+1, skip+itemsPerPage)
+
+		query := fmt.Sprintf(`
 		  {
-      	bids(where: { bidderAddress: "` + BIDDER + `", status: "WON", validator_not: null }, first: 1000) {
-        	id
-        	bidderAddress
-        	pubKeyIndex
-        	validator {
+			bids(where: { bidderAddress: "%s", status: "WON", validator_not: null }, first: %d, skip: %d) {
+			  id
+			  bidderAddress
+			  pubKeyIndex
+			  validator {
 				id
 				phase
 				ipfsHashForEncryptedValidatorKey
 				validatorPubKey
 				etherfiNode
 				BNFTHolder
-        	}
-      	}
-    	}`,
+			  }
+			}
+		  }`, BIDDER, itemsPerPage, skip)
+
+		queryJsonData := map[string]string{"query": query}
+		jsonValue, _ := json.Marshal(queryJsonData)
+
+		request, err := http.NewRequest("POST", GRAPH_URL, bytes.NewBuffer(jsonValue))
+		if err != nil {
+			fmt.Printf("The HTTP request failed with error %s\n", err)
+			return nil, err
+		}
+		request.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{Timeout: time.Second * 10}
+		response, err := client.Do(request)
+		if err != nil {
+			fmt.Printf("The HTTP request failed with error %s\n", err)
+			return nil, err
+		}
+		defer response.Body.Close()
+
+		data, _ := ioutil.ReadAll(response.Body)
+
+		var result schemas.GQLResponseType
+		if err := json.Unmarshal(data, &result); err != nil {
+			fmt.Println("Can not unmarshal JSON")
+			return nil, err
+		}
+
+		if len(result.Data.Bids) == 0 {
+			break // Break the loop if no more bids are found
+		}
+
+		allBids = append(allBids, result.Data.Bids...)
 	}
-	jsonValue, _ := json.Marshal(queryJsonData)
 
-	request, err := http.NewRequest("POST", GRAPH_URL, bytes.NewBuffer(jsonValue))
-	if err != nil {
-		fmt.Printf("The HTTP request failed with error %s\n", err)
-		// TODO: return []
-		return nil, err
-	}
-	request.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: time.Second * 10}
-	response, err := client.Do(request)
-	if err != nil {
-		fmt.Printf("The HTTP request failed with error %s\n", err)
-		// TODO: return []
-		return nil, err
-	}
-	defer response.Body.Close()
-
-	data, _ := ioutil.ReadAll(response.Body)
-
-	var result schemas.GQLResponseType
-	if err := json.Unmarshal(data, &result); err != nil { // Parse []byte to go struct pointer
-		fmt.Println("Can not unmarshal JSON")
-		return nil, err
-	}
-
-	return result.Data.Bids, nil
+	return allBids, nil
 }
