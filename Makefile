@@ -1,10 +1,7 @@
-# Go compiler
 GO := go
 
-# Output directory
 OUTPUT_DIR := output
 
-# Binary name
 BINARY_NAME := etherfi-sync-clientv2
 
 .PHONY: all clean
