@@ -84,7 +84,12 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 			continue
 		}
 
-		fmt.Println(`Processing stake request for validator: ` + bid.Id + ` and BNFT Holder: ` + bid.Validator.BNFTHolder)
+		fmt.Println(`Processing stake request for validator: ` + bid.Id + ` and phase: ` + bid.Validator.Phase + ` and BNFT Holder: ` + bid.Validator.BNFTHolder + ` and ipfs path: ` + bid.Validator.IpfsHashForEncryptedValidatorKey)
+
+
+		if bid.Validator.Phase == "READY_FOR_DEPOSIT" || bid.Validator.Phase == "STAKE_DEPOSITED" {
+			continue
+		}
 
 		validator := bid.Validator
 		ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
@@ -93,7 +98,7 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 		if err != nil {
 			return err
 		}
-
+		
 		var validatorKey schemas.DecryptedDataJSON
 		if isUsingCBC {
 			validatorKey, err = utils.DecryptPrivateKeysCBC(privateKey, config.PASSWORD)
