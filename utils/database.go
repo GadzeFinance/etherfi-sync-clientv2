@@ -2,7 +2,6 @@ package utils
 
 import (
 	"database/sql"
-	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
 )
 
 func GetIDCount(db *sql.DB, bidID string) (int, error) {
@@ -14,7 +13,7 @@ func GetIDCount(db *sql.DB, bidID string) (int, error) {
 	return count, err
 }
 
-func CreateTable(db *sql.DB) (error) {
+func CreateTable(db *sql.DB) error {
 	// Create the table if it doesn't exist
 	createTableQuery := `
 	CREATE TABLE IF NOT EXISTS winning_bids (
@@ -33,6 +32,7 @@ func CreateTable(db *sql.DB) (error) {
 	return nil
 }
 
+/*
 func UpdateRowStatus(db *sql.DB, bidId string, status string) (error) {
 	query := `
 	UPDATE winning_bids
@@ -77,3 +77,4 @@ func GetBid(db *sql.DB, id string) (schemas.TableBid, error) {
 
 	return data, nil
 }
+*/
