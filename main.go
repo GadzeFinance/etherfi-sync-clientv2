@@ -24,10 +24,9 @@ func main() {
 }
 
 func run() error {
-	config, err := utils.GetAndCheckConfig()
+	config, err := utils.GetAndCheckConfig("config.json")
 	if err != nil {
-		fmt.Printf("Failed to load config: %v\n", err)
-		return err
+		return fmt.Errorf("Failed to load config: %w\n", err)
 	}
 
 	fmt.Println("Starting EtherFi Sync Client:")
@@ -36,27 +35,23 @@ func run() error {
 
 	db, err := sql.Open("sqlite", "data.db")
 	if err != nil {
-		fmt.Println(err)
-		return err
+		return fmt.Errorf("failed to open sqlite db: %w", err)
 	}
 	defer db.Close()
 
-	err = utils.CreateTable(db)
-	if err != nil {
-		fmt.Println(err)
-		return err
+	if err := utils.CreateTable(db); err != nil {
+		return fmt.Errorf("crating bids table: %w", err)
 	}
 
-	fetchValidatorKeys(config, db)
-	return nil
+	return fetchValidatorKeys(config, db)
 }
 
 func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 
 	fmt.Println("Fetching Validator Keys from IPFS...")
-	privateKey, err := utils.ExtractPrivateKeysFromFS(config.PRIVATE_KEYS_FILE_LOCATION)
+	privateKey, err := utils.ParseKeystoreFile(config.PRIVATE_KEYS_FILE_LOCATION)
 	if err != nil {
-		return err
+		return fmt.Errorf("parsing keystore: %w", err)
 	}
 
 	// For compatibility, if the authTag is empty, we know it's CBC mode
@@ -67,25 +62,23 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 
 	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
 	if err != nil {
-		return err
+		return fmt.Errorf("retrieveBidsFromSubgraph: %w", err)
 	}
 
 	fmt.Println("Found ", len(bids), " stake requests.")
-	for i, bid := range bids {
-		_ = i
+	for _, bid := range bids {
 
 		count, err := utils.GetIDCount(db, bid.Id)
 		if err != nil {
-			return err
+			return fmt.Errorf("GetIDCount: %w", err)
 		}
 
 		if count > 0 {
-			fmt.Println(`Skipping stake request for validator: ` + bid.Id + ` because it has already been processed.`)
+			fmt.Printf("Skipping stake request for validator: %s because it has already been processed.", bid)
 			continue
 		}
 
 		fmt.Println(`Processing stake request for validator: ` + bid.Id + ` and phase: ` + bid.Validator.Phase + ` and BNFT Holder: ` + bid.Validator.BNFTHolder + ` and ipfs path: ` + bid.Validator.IpfsHashForEncryptedValidatorKey)
-
 
 		if bid.Validator.Phase == "READY_FOR_DEPOSIT" || bid.Validator.Phase == "STAKE_DEPOSITED" {
 			continue
@@ -96,9 +89,9 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 
 		IPFSResponse, err := utils.FetchFromIPFS(config.IPFS_GATEWAY, ipfsHashForEncryptedValidatorKey)
 		if err != nil {
-			return err
+			return fmt.Errorf("FetchFromIPFS: %w", err)
 		}
-		
+
 		var validatorKey schemas.DecryptedDataJSON
 		if isUsingCBC {
 			validatorKey, err = utils.DecryptPrivateKeysCBC(privateKey, config.PASSWORD)
@@ -106,21 +99,20 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 			validatorKey, err = utils.DecryptPrivateKeysGCM(privateKey, config.PASSWORD)
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("DecryptPrivateKeys: %w", err)
 		}
 
 		pubKeyArray := validatorKey.PublicKeys
 		privKeyArray := validatorKey.PrivateKeys
 		keypairForIndex, err := utils.GetKeyPairByPubKeyIndex(bid.PubKeyIndex, privKeyArray, pubKeyArray)
-
 		if err != nil {
-			return err
+			return fmt.Errorf("GetKeyPairByPubKeyIndex: %w", err)
 		}
 
 		data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
 
 		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, data, bid.Id, validator.ValidatorPubKey, bid.Validator.EtherfiNode, db); err != nil {
-			return err
+			return fmt.Errorf("SaveKeysToFS: %w", err)
 		}
 	}
 
@@ -153,27 +145,25 @@ func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string) ([]schemas.BidTyp
 
 	request, err := http.NewRequest("POST", GRAPH_URL, bytes.NewBuffer(jsonValue))
 	if err != nil {
-		fmt.Printf("The HTTP request failed with error %s\n", err)
-		// TODO: return []
-		return nil, err
+		return nil, fmt.Errorf("creating request: %w", err)
 	}
 	request.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: time.Second * 10}
 	response, err := client.Do(request)
 	if err != nil {
-		fmt.Printf("The HTTP request failed with error %s\n", err)
-		// TODO: return []
-		return nil, err
+		return nil, fmt.Errorf("Bid request: %w", err)
 	}
 	defer response.Body.Close()
 
-	data, _ := ioutil.ReadAll(response.Body)
+	data, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading bid data: %w", err)
+	}
 
 	var result schemas.GQLResponseType
-	if err := json.Unmarshal(data, &result); err != nil { // Parse []byte to go struct pointer
-		fmt.Println("Can not unmarshal JSON")
-		return nil, err
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("marshalling gql bid response: %w", err)
 	}
 
 	return result.Data.Bids, nil

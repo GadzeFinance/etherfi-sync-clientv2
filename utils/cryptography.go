@@ -29,7 +29,7 @@ func fromString(str string) *big.Int {
 	return res
 }
 
-func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex schemas.KeyPair) schemas.ValidatorKeyInfo {
+func DecryptValidatorKeyInfo(file *schemas.IPFSResponseType, keypairForIndex schemas.KeyPair) schemas.ValidatorKeyInfo {
 	// Fetch necessary data
 	privateKey := keypairForIndex.PrivateKey
 	encryptedValidatorKey := file.EncryptedValidatorKey
@@ -58,13 +58,10 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 	// Multiply the staker's pubKey point and NO's private key to generate shared secret
 	curve := crypto.S256()
 	nodeOperatorSharedSecret, _ := curve.ScalarMult(receivedStakerPubKeyPoint.X, receivedStakerPubKeyPoint.Y, nodeOperatorPrivKey.Bytes())
-	secretAsArray := nodeOperatorSharedSecret.Bytes()
 
-	// Prepend 0 until the length hits 32 bytes
-	for len(secretAsArray) < 32 {
-		emptyByte := byte(0)
-		secretAsArray = append([]byte{emptyByte}, secretAsArray...)
-	}
+	// zero padded secret
+	nodeOperatorSecret := make([]byte, 32)
+	copy(nodeOperatorSecret, nodeOperatorSharedSecret.Bytes())
 
 	// For compatibility, if all three encrypted fields are in the form [iv]:[data], we decrypt them using CBC mode
 	isUsingCBC := false
@@ -78,13 +75,13 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 
 	// Use the shared secret to decrypt encrypted data
 	if isUsingCBC {
-		bValidatorKey, _ = DecryptCBC(encryptedValidatorKey, hex.EncodeToString(secretAsArray))
-		bValidatorKeyPassword, _ = DecryptCBC(encryptedPassword, hex.EncodeToString(secretAsArray))
-		bKeystoreName, _ = DecryptCBC(encryptedKeystoreName, hex.EncodeToString(secretAsArray))
+		bValidatorKey, _ = DecryptCBC(encryptedValidatorKey, nodeOperatorSecret)
+		bValidatorKeyPassword, _ = DecryptCBC(encryptedPassword, nodeOperatorSecret)
+		bKeystoreName, _ = DecryptCBC(encryptedKeystoreName, nodeOperatorSecret)
 	} else {
-		bValidatorKey, _ = DecryptGCM(encryptedValidatorKey, hex.EncodeToString(secretAsArray))
-		bValidatorKeyPassword, _ = DecryptGCM(encryptedPassword, hex.EncodeToString(secretAsArray))
-		bKeystoreName, _ = DecryptGCM(encryptedKeystoreName, hex.EncodeToString(secretAsArray))
+		bValidatorKey, _ = DecryptGCM(encryptedValidatorKey, nodeOperatorSecret)
+		bValidatorKeyPassword, _ = DecryptGCM(encryptedPassword, nodeOperatorSecret)
+		bKeystoreName, _ = DecryptGCM(encryptedKeystoreName, nodeOperatorSecret)
 	}
 
 	return schemas.ValidatorKeyInfo{
@@ -94,12 +91,8 @@ func DecryptValidatorKeyInfo(file schemas.IPFSResponseType, keypairForIndex sche
 	}
 }
 
-func DecryptGCM(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) {
-	// Decode the encryption key
-	key, err := hex.DecodeString(ENCRYPTION_KEY)
-	if err != nil {
-		panic(err.Error())
-	}
+func DecryptGCM(encrypted_string string, key []byte) ([]byte, error) {
+
 	// There're three parts in the encrypted string: [iv]:[data]:[authTag]
 	parts := strings.Split(encrypted_string, ":")
 	iv, err := hex.DecodeString(parts[0])
@@ -131,11 +124,7 @@ func DecryptGCM(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) 
 	return plaintext, nil
 }
 
-func DecryptCBC(encrypted_string string, ENCRYPTION_KEY string) ([]byte, error) {
-	key, err := hex.DecodeString(ENCRYPTION_KEY)
-	if err != nil {
-		return nil, err
-	}
+func DecryptCBC(encrypted_string string, key []byte) ([]byte, error) {
 	parts := strings.Split(encrypted_string, ":")
 	// the encrypted string should has the from [iv]:[ciphertext]
 	if len(parts) != 2 {
@@ -168,7 +157,7 @@ func PKCS5UnPadding(src []byte) []byte {
 	return src[:(length - unpadding)]
 }
 
-func DecryptPrivateKeysGCM(privateKeys schemas.KeyStoreFile, privKeyPassword string) (schemas.DecryptedDataJSON, error) {
+func DecryptPrivateKeysGCM(privateKeys *schemas.KeyStoreFile, privKeyPassword string) (schemas.DecryptedDataJSON, error) {
 	iv, err := hex.DecodeString(privateKeys.Iv)
 	if err != nil {
 		panic(err)
@@ -205,7 +194,7 @@ func DecryptPrivateKeysGCM(privateKeys schemas.KeyStoreFile, privKeyPassword str
 	return decryptedDataJSON, nil
 }
 
-func DecryptPrivateKeysCBC(privateKeys schemas.KeyStoreFile, privKeyPassword string) (schemas.DecryptedDataJSON, error) {
+func DecryptPrivateKeysCBC(privateKeys *schemas.KeyStoreFile, privKeyPassword string) (schemas.DecryptedDataJSON, error) {
 	iv, err := hex.DecodeString(privateKeys.Iv)
 	if err != nil {
 		panic(err)
