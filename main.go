@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
@@ -60,86 +61,119 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 		isUsingCBC = true
 	}
 
-	bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER)
+	pubkeyIndex, err := utils.GetLastPubkeyIndex(db)
 	if err != nil {
-		return fmt.Errorf("retrieveBidsFromSubgraph: %w", err)
+		return fmt.Errorf("GetLastPubkeyIndex: %w", err)
 	}
 
-	fmt.Println("Found ", len(bids), " stake requests.")
-	for _, bid := range bids {
-
-		count, err := utils.GetIDCount(db, bid.Id)
+	for {
+		fmt.Printf("Begin pubkeyIndex : %d\n", pubkeyIndex)
+		bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER, pubkeyIndex)
 		if err != nil {
-			return fmt.Errorf("GetIDCount: %w", err)
+			return fmt.Errorf("retrieveBidsFromSubgraph: %w", err)
 		}
 
-		if count > 0 {
-			fmt.Printf("Skipping stake request for validator: %s because it has already been processed.", bid)
-			continue
+		if len(bids) == 0 {
+			fmt.Printf("complete: fetched all keys\n")
+			return nil
 		}
 
-		fmt.Println(`Processing stake request for validator: ` + bid.Id + ` and phase: ` + bid.Validator.Phase + ` and BNFT Holder: ` + bid.Validator.BNFTHolder + ` and ipfs path: ` + bid.Validator.IpfsHashForEncryptedValidatorKey)
+		fmt.Println("Found ", len(bids), " stake requests.")
+		for _, bid := range bids {
 
-		if bid.Validator.Phase == "READY_FOR_DEPOSIT" || bid.Validator.Phase == "STAKE_DEPOSITED" {
-			continue
-		}
+			count, err := utils.GetIDCount(db, bid.Id)
+			if err != nil {
+				return fmt.Errorf("GetIDCount: %w", err)
+			}
 
-		validator := bid.Validator
-		ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
+			if count > 0 {
+				fmt.Printf("Skipping stake request for validator: %s because it has already been processed.", bid)
+				continue
+			}
 
-		IPFSResponse, err := utils.FetchFromIPFS(config.IPFS_GATEWAY, ipfsHashForEncryptedValidatorKey)
-		if err != nil {
-			return fmt.Errorf("FetchFromIPFS: %w", err)
-		}
+			fmt.Println(`Processing stake request for validator: ` + bid.Id + ` and phase: ` + bid.Validator.Phase + ` and BNFT Holder: ` + bid.Validator.BNFTHolder + ` and ipfs path: ` + bid.Validator.IpfsHashForEncryptedValidatorKey)
 
-		var validatorKey schemas.DecryptedDataJSON
-		if isUsingCBC {
-			validatorKey, err = utils.DecryptPrivateKeysCBC(privateKey, config.PASSWORD)
-		} else {
-			validatorKey, err = utils.DecryptPrivateKeysGCM(privateKey, config.PASSWORD)
-		}
-		if err != nil {
-			return fmt.Errorf("DecryptPrivateKeys: %w", err)
-		}
+			if bid.Validator.Phase == "READY_FOR_DEPOSIT" || bid.Validator.Phase == "STAKE_DEPOSITED" {
+				continue
+			}
 
-		pubKeyArray := validatorKey.PublicKeys
-		privKeyArray := validatorKey.PrivateKeys
-		keypairForIndex, err := utils.GetKeyPairByPubKeyIndex(bid.PubKeyIndex, privKeyArray, pubKeyArray)
-		if err != nil {
-			return fmt.Errorf("GetKeyPairByPubKeyIndex: %w", err)
-		}
+			validator := bid.Validator
+			ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
 
-		data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
+			IPFSResponse, err := utils.FetchFromIPFS(config.IPFS_GATEWAY, ipfsHashForEncryptedValidatorKey)
+			if err != nil {
+				return fmt.Errorf("FetchFromIPFS: %w", err)
+			}
 
-		if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, data, bid.Id, validator.ValidatorPubKey, bid.Validator.EtherfiNode, db); err != nil {
-			return fmt.Errorf("SaveKeysToFS: %w", err)
+			var validatorKey schemas.DecryptedDataJSON
+			if isUsingCBC {
+				validatorKey, err = utils.DecryptPrivateKeysCBC(privateKey, config.PASSWORD)
+			} else {
+				validatorKey, err = utils.DecryptPrivateKeysGCM(privateKey, config.PASSWORD)
+			}
+			if err != nil {
+				return fmt.Errorf("DecryptPrivateKeys: %w", err)
+			}
+
+			pubKeyArray := validatorKey.PublicKeys
+			privKeyArray := validatorKey.PrivateKeys
+			keypairForIndex, err := utils.GetKeyPairByPubKeyIndex(bid.PubKeyIndex, privKeyArray, pubKeyArray)
+			if err != nil {
+				return fmt.Errorf("GetKeyPairByPubKeyIndex: %w", err)
+			}
+
+			data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
+
+			pi, err := strconv.ParseInt(bid.PubKeyIndex, 10, 64)
+			if err != nil {
+				return fmt.Errorf("ParseInt: %w", err)
+			}
+
+			if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, data, bid.Id, pi, validator.ValidatorPubKey, bid.Validator.EtherfiNode, db); err != nil {
+				return fmt.Errorf("SaveKeysToFS: %w", err)
+			}
+
+			if pubkeyIndex < pi {
+				pubkeyIndex = pi
+			}
 		}
 	}
-
-	return nil
 }
 
 // This function fetch bids from the Graph
-func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string) ([]schemas.BidType, error) {
+func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string, pubkeyIndex int64) ([]schemas.BidType, error) {
 	// the query to fetch bids
 	// TODO we have first 1000 here that's going to have to be fixed in the near future
+
+	limit := "200"
+
 	queryJsonData := map[string]string{
 		"query": `
-		  {
-      	bids(where: { bidderAddress: "` + BIDDER + `", status: "WON", validator_not: null }, first: 1000) {
-        	id
-        	bidderAddress
-        	pubKeyIndex
-        	validator {
+		{
+			bids(
+				where: { 
+					pubKeyIndex_gt: ` + fmt.Sprintf("%d", pubkeyIndex) + `
+					bidderAddress: "` + BIDDER + `"
+					status: "WON"
+					validator_not: null 
+				} 
+				first: ` + limit + `
+				orderBy: pubKeyIndex
+				orderDirection: asc
+			) {
 				id
-				phase
-				ipfsHashForEncryptedValidatorKey
-				validatorPubKey
-				etherfiNode
-				BNFTHolder
-        	}
-      	}
-    	}`,
+				bidderAddress
+				pubKeyIndex
+				validator {
+						id
+						phase
+						ipfsHashForEncryptedValidatorKey
+						validatorPubKey
+						etherfiNode
+						BNFTHolder
+				}
+			}
+		}`,
 	}
 	jsonValue, _ := json.Marshal(queryJsonData)
 

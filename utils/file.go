@@ -42,7 +42,7 @@ func FetchFromIPFS(gatewayURL string, cid string) (*schemas.IPFSResponseType, er
 	return &ipfsResponse, nil
 }
 
-func SaveKeysToFS(output_location string, validatorInfo schemas.ValidatorKeyInfo, bidId string, validatorPublicKey string, nodeAddress string, db *sql.DB) error {
+func SaveKeysToFS(output_location string, validatorInfo schemas.ValidatorKeyInfo, bidId string, pubkeyIndex int64, validatorPublicKey string, nodeAddress string, db *sql.DB) error {
 
 	// Step 1: Create directory and add data to the directory
 	if err := createDir(output_location); err != nil {
@@ -86,14 +86,14 @@ func SaveKeysToFS(output_location string, validatorInfo schemas.ValidatorKeyInfo
 		return fmt.Errorf("creating node_address.txt: %w", err)
 	}
 
-	query := "REPLACE INTO winning_bids (id, pubkey, password, nodeAddress, keystore) VALUES (?, ?, ?, ?, ?)"
+	query := "REPLACE INTO winning_bids (id, pubkeyIndex, pubkey, password, nodeAddress, keystore) VALUES (?, ?, ?, ?, ?, ?)"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		log.Fatalf("creating bid update query: %v", err)
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(bidId, validatorPublicKey, string(validatorInfo.ValidatorKeyPassword), nodeAddress, string(validatorInfo.ValidatorKeyFile))
+	_, err = stmt.Exec(bidId, pubkeyIndex, validatorPublicKey, string(validatorInfo.ValidatorKeyPassword), nodeAddress, string(validatorInfo.ValidatorKeyFile))
 	if err != nil {
 		log.Fatalf("storing bids in DB: %v", err)
 	}
