@@ -80,7 +80,7 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 
 		fmt.Println(`Processing stake request for validator: ` + bid.Id + ` and phase: ` + bid.Validator.Phase + ` and BNFT Holder: ` + bid.Validator.BNFTHolder + ` and ipfs path: ` + bid.Validator.IpfsHashForEncryptedValidatorKey)
 
-		if bid.Validator.Phase == "READY_FOR_DEPOSIT" || bid.Validator.Phase == "STAKE_DEPOSITED" {
+		if bid.Validator.Phase != "WAITING_FOR_APPROVAL" || bid.Validator.Phase != "LIVE" {
 			continue
 		}
 
