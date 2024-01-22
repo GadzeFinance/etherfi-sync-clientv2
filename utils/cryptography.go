@@ -61,7 +61,8 @@ func DecryptValidatorKeyInfo(file *schemas.IPFSResponseType, keypairForIndex sch
 
 	// zero padded secret
 	nodeOperatorSecret := make([]byte, 32)
-	copy(nodeOperatorSecret, nodeOperatorSharedSecret.Bytes())
+	secretLen := len(nodeOperatorSharedSecret.Bytes())
+	copy(nodeOperatorSecret[32-secretLen:], nodeOperatorSharedSecret.Bytes())
 
 	// For compatibility, if all three encrypted fields are in the form [iv]:[data], we decrypt them using CBC mode
 	isUsingCBC := false
