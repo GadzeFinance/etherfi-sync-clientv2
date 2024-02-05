@@ -65,6 +65,10 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("GetLastPubkeyIndex: %w", err)
 	}
+	// TODO
+	// there is no way of sorting against latest won bids. beacuse sync-client did not store keys which is not status:won in data.db.
+	// at the moment, iterating all keys is the clear way to get recent won bids.
+	pubkeyIndex = 0
 
 	for {
 		fmt.Printf("Begin pubkeyIndex : %d\n", pubkeyIndex)
@@ -77,9 +81,16 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 			fmt.Printf("complete: fetched all keys\n")
 			return nil
 		}
-
 		fmt.Println("Found ", len(bids), " stake requests.")
+		skipCount := 0
 		for _, bid := range bids {
+			pi, err := strconv.ParseInt(bid.PubKeyIndex, 10, 64)
+			if err != nil {
+				return fmt.Errorf("ParseInt: %w", err)
+			}
+			if pubkeyIndex < pi {
+				pubkeyIndex = pi
+			}
 
 			count, err := utils.GetIDCount(db, bid.Id)
 			if err != nil {
@@ -87,15 +98,17 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 			}
 
 			if count > 0 {
-				fmt.Printf("Skipping stake request for validator: %s because it has already been processed.", bid)
+				skipCount++
+				// fmt.Printf("Skipping stake request for validator: %s because it has already been processed.\n", bid)
+				continue
+			}
+
+			if bid.Validator.Phase == "READY_FOR_DEPOSIT" || bid.Validator.Phase == "STAKE_DEPOSITED" {
+				skipCount++
 				continue
 			}
 
 			fmt.Println(`Processing stake request for validator: ` + bid.Id + ` and phase: ` + bid.Validator.Phase + ` and BNFT Holder: ` + bid.Validator.BNFTHolder + ` and ipfs path: ` + bid.Validator.IpfsHashForEncryptedValidatorKey)
-
-			if bid.Validator.Phase == "READY_FOR_DEPOSIT" || bid.Validator.Phase == "STAKE_DEPOSITED" {
-				continue
-			}
 
 			validator := bid.Validator
 			ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
@@ -124,28 +137,19 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 
 			data := utils.DecryptValidatorKeyInfo(IPFSResponse, keypairForIndex)
 
-			pi, err := strconv.ParseInt(bid.PubKeyIndex, 10, 64)
-			if err != nil {
-				return fmt.Errorf("ParseInt: %w", err)
-			}
-
 			if err := utils.SaveKeysToFS(config.OUTPUT_LOCATION, data, bid.Id, pi, validator.ValidatorPubKey, bid.Validator.EtherfiNode, db); err != nil {
 				return fmt.Errorf("SaveKeysToFS: %w", err)
 			}
-
-			if pubkeyIndex < pi {
-				pubkeyIndex = pi
-			}
 		}
+		fmt.Printf("Skipping %d stake requests because these have already been processed.\n", skipCount)
 	}
 }
 
 // This function fetch bids from the Graph
 func retrieveBidsFromSubgraph(GRAPH_URL string, BIDDER string, pubkeyIndex int64) ([]schemas.BidType, error) {
 	// the query to fetch bids
-	// TODO we have first 1000 here that's going to have to be fixed in the near future
 
-	limit := "200"
+	limit := "500"
 
 	queryJsonData := map[string]string{
 		"query": `
