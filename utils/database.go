@@ -12,12 +12,29 @@ func GetIDCount(db *sql.DB, bidID string) (int, error) {
 
 	return count, err
 }
+func GetLastPubkeyIndex(db *sql.DB) (int64, error) {
+
+	query := "SELECT pubkeyIndex FROM winning_bids order by pubkeyIndex desc"
+	var pubkeyIndex int64
+	err := db.QueryRow(query).Scan(&pubkeyIndex)
+	switch {
+	case err == sql.ErrNoRows:
+		return -1, nil
+	case err != nil:
+		return -1, err
+	default:
+	}
+
+	return pubkeyIndex, nil
+	// return strconv.ParseInt(pubkeyIndex, 10, 64)
+}
 
 func CreateTable(db *sql.DB) error {
 	// Create the table if it doesn't exist
 	createTableQuery := `
 	CREATE TABLE IF NOT EXISTS winning_bids (
 		id STRING PRIMARY KEY,
+		pubkeyIndex INTEGER,
 		pubkey TEXT,
 		password TEXT,
 		nodeAddress TEXT,
