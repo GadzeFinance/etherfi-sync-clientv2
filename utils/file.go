@@ -106,17 +106,15 @@ func createDir(path string) error {
 		return fmt.Errorf("creating directory '%s': %w", path, err)
 	}
 	// Create keys and passwords directory only if we're creating our output directory
-	if path == "output" {
-		keysPath := filepath.Join(path, "keys")
-		passwordPath := filepath.Join(path, "passwords")
+	keysPath := filepath.Join(path, "keys")
+	passwordPath := filepath.Join(path, "passwords")
+	
+	if err := os.MkdirAll(keysPath, os.ModePerm); err != nil {
+		return fmt.Errorf("creating keys directory: %w", err)
+	}
 
-		if err := os.MkdirAll(keysPath, os.ModePerm); err != nil {
-			return fmt.Errorf("creating keys directory: %w", err)
-		}
-
-		if err := os.MkdirAll(passwordPath, os.ModePerm); err != nil {
-			return fmt.Errorf("creating passwords directory: %w", err)
-		}
+	if err := os.MkdirAll(passwordPath, os.ModePerm); err != nil {
+		return fmt.Errorf("creating passwords directory: %w", err)
 	}
 
 	return nil
