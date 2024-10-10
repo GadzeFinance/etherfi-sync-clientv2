@@ -1,0 +1,11 @@
+{
+  "GRAPH_URL": "https://api.studio.thegraph.com/query/41778/etherfi-phase2-mainnet/version/latest",
+  "IPFS_GATEWAY": "https://ether-fi-mainnet.infura-ipfs.io/ipfs",
+  "BIDDER": "",
+  "PRIVATE_KEYS_FILE_LOCATION": "",
+  "OUTPUT_LOCATION": "./output",
+  "PASSWORD": "",
+  "CONSENSUS_FOLDER_LOCATION": ".",
+  "ETHERFI_SC_CLIENT_LOCATION": ".",
+  "PATH_TO_PRYSYM_SH": "."
+}
