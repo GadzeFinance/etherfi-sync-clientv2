@@ -41,8 +41,8 @@ touch config.json
 	"IPFS_GATEWAY": (ask it to ether.fi team),
 	"BIDDER": (your node operator wallet),
 	"OUTPUT_LOCATION": (the path you want to download the keys to),
-  "PRIVATE_KEYS_FILE_LOCATION": (the path to your `privateEtherfiKeystore-….json`),
-  "PASSWORD": (the passwd you used when generating the above keys via etherfi-desktop-app)
+	"PRIVATE_KEYS_FILE_LOCATION": (the path to your `privateEtherfiKeystore-….json`),
+	"PASSWORD": (the passwd you used when generating the private keys via etherfi-desktop-app)
 }
 ```
 
