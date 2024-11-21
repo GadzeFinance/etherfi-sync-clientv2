@@ -25,6 +25,10 @@ tar -xf <file-name-specified-in-release-table>
 # make a new output directory for stake bids that have been won
 mkdir output
 
+# make sure you create create "keys" and "passwords" dicrectory in the OUTPUT_LOCATION path
+mkdir -p ${OUTPUT_LOCATION}/keys
+mkdir -p ${OUTPUT_LOCATION}/passwords
+
 # create configuration file
 touch config.json
 
