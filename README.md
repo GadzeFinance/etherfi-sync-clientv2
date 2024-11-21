@@ -37,12 +37,12 @@ touch config.json
 ```
 ```json
 {
-  "GRAPH_URL": "",
-  "BIDDER": "",
-  "PRIVATE_KEYS_FILE_LOCATION": "",
-  "OUTPUT_LOCATION": "",
-  "PASSWORD": "",
-  "IPFS_GATEWAY": ""
+	"GRAPH_URL": (ask it to ether.fi team),
+	"IPFS_GATEWAY": (ask it to ether.fi team),
+	"BIDDER": (your node operator wallet),
+	"OUTPUT_LOCATION": (the path you want to download the keys to),
+  "PRIVATE_KEYS_FILE_LOCATION": (the path to your `privateEtherfiKeystore-….json`),
+  "PASSWORD": (the passwd you used when generating the above keys via etherfi-desktop-app)
 }
 ```
 
