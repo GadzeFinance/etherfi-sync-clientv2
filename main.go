@@ -48,7 +48,6 @@ func run() error {
 }
 
 func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
-
 	fmt.Println("Fetching Validator Keys from IPFS...")
 	privateKey, err := utils.ParseKeystoreFile(config.PRIVATE_KEYS_FILE_LOCATION)
 	if err != nil {
@@ -68,7 +67,9 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 	// TODO
 	// there is no way of sorting against latest won bids. beacuse sync-client did not store keys which is not status:won in data.db.
 	// at the moment, iterating all keys is the clear way to get recent won bids.
-	pubkeyIndex = -1
+	if (config.USE_LAST_VALIDATOR_INDEX == true) {
+		pubkeyIndex = -1
+	}
 
 	for {
 		fmt.Printf("Begin pubkeyIndex : %d\n", pubkeyIndex)
