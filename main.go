@@ -113,9 +113,19 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 			validator := bid.Validator
 			ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
 
+			retry := false
 			IPFSResponse, err := utils.FetchFromIPFS(config.IPFS_GATEWAY, ipfsHashForEncryptedValidatorKey)
 			if err != nil {
-				return fmt.Errorf("FetchFromIPFS: %w", err)
+				if (!retry) {
+					fmt.Printf("Fetch timed out, Retrying Once: " + ipfsHashForEncryptedValidatorKey)
+					retry = true
+					IPFSResponse, err = utils.FetchFromIPFS(config.IPFS_GATEWAY, ipfsHashForEncryptedValidatorKey)
+					if err != nil {
+						return fmt.Errorf("FetchFromIPFS: %w", err)
+					}
+				} else {
+					return fmt.Errorf("FetchFromIPFS: %w", err)
+				}
 			}
 
 			var validatorKey schemas.DecryptedDataJSON
@@ -142,6 +152,7 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 			}
 		}
 		fmt.Printf("Skipping %d stake requests because these have already been processed.\n", skipCount)
+
 	}
 }
 
