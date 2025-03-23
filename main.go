@@ -72,6 +72,7 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 
 	for {
 		fmt.Printf("Begin pubkeyIndex : %d\n", pubkeyIndex)
+
 		bids, err := retrieveBidsFromSubgraph(config.GRAPH_URL, config.BIDDER, pubkeyIndex)
 		if err != nil {
 			return fmt.Errorf("retrieveBidsFromSubgraph: %w", err)
@@ -113,17 +114,11 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 			validator := bid.Validator
 			ipfsHashForEncryptedValidatorKey := validator.IpfsHashForEncryptedValidatorKey
 
-			retry := false
 			IPFSResponse, err := utils.FetchFromIPFS(config.IPFS_GATEWAY, ipfsHashForEncryptedValidatorKey)
 			if err != nil {
-				if (!retry) {
-					fmt.Printf("Fetch timed out, Retrying Once: " + ipfsHashForEncryptedValidatorKey)
-					retry = true
-					IPFSResponse, err = utils.FetchFromIPFS(config.IPFS_GATEWAY, ipfsHashForEncryptedValidatorKey)
-					if err != nil {
-						return fmt.Errorf("FetchFromIPFS: %w", err)
-					}
-				} else {
+				fmt.Println("Fetch timed out, Retrying Once: " + ipfsHashForEncryptedValidatorKey)
+				IPFSResponse, err = utils.FetchFromIPFS(config.IPFS_GATEWAY, ipfsHashForEncryptedValidatorKey)
+				if err != nil {
 					return fmt.Errorf("FetchFromIPFS: %w", err)
 				}
 			}
@@ -152,7 +147,6 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 			}
 		}
 		fmt.Printf("Skipping %d stake requests because these have already been processed.\n", skipCount)
-
 	}
 }
 
