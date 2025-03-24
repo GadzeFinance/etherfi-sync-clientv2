@@ -42,7 +42,8 @@ touch config.json
 	"BIDDER": (your node operator wallet),
 	"OUTPUT_LOCATION": (the path you want to download the keys to),
 	"PRIVATE_KEYS_FILE_LOCATION": (the path to your `privateEtherfiKeystore-….json`),
-	"PASSWORD": (the passwd you used when generating the private keys via etherfi-desktop-app)
+	"PASSWORD": (the passwd you used when generating the private keys via etherfi-desktop-app),
+	"IGNORE_LAST_VALIDATOR_INDEX": (boolean, set true to ignore the local database and iterate over all validator bids from thegraph)
 }
 ```
 
