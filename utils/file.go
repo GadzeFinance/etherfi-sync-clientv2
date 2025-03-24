@@ -22,7 +22,7 @@ func FetchFromIPFS(gatewayURL string, cid string) (*schemas.IPFSResponseType, er
 		return nil, fmt.Errorf("creating IPFS request: %w", err)
 	}
 	request.Header.Set("Content-Type", "application/json")
-	client := &http.Client{Timeout: time.Second * 30}
+	client := &http.Client{Timeout: time.Second * 10}
 	response, err := client.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to fetch from IPFS: %w", err)

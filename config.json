@@ -1,11 +1,9 @@
 {
-  "GRAPH_URL": "https://api.studio.thegraph.com/query/41778/etherfi-phase2-mainnet/version/latest",
-  "IPFS_GATEWAY": "https://ether-fi-mainnet.infura-ipfs.io/ipfs",
-  "BIDDER": "",
-  "PRIVATE_KEYS_FILE_LOCATION": "",
-  "OUTPUT_LOCATION": "./output",
-  "PASSWORD": "",
-  "CONSENSUS_FOLDER_LOCATION": ".",
-  "ETHERFI_SC_CLIENT_LOCATION": ".",
-  "PATH_TO_PRYSYM_SH": "."
+	"GRAPH_URL": "https://gateway-arbitrum.network.thegraph.com/api/73b09012e7e6301b5e0e20b45fd66b48/deployments/id/QmYXL6XeXyGC2DCnoQ45ApG68pi8irCZdRdtFx69FetRDd",
+	"IPFS_GATEWAY": "https://ether-fi-mainnet.infura-ipfs.io/ipfs",
+	"BIDDER": "",
+	"OUTPUT_LOCATION": "./output",
+	"PRIVATE_KEYS_FILE_LOCATION": ".",
+	"PASSWORD": ".",
+	"USE_LAST_VALIDATOR_INDEX": false
 }
