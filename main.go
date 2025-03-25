@@ -67,7 +67,7 @@ func fetchValidatorKeys(config schemas.Config, db *sql.DB) error {
 	// TODO
 	// there is no way of sorting against latest won bids. beacuse sync-client did not store keys which is not status:won in data.db.
 	// at the moment, iterating all keys is the clear way to get recent won bids.
-	if (config.USE_LAST_VALIDATOR_INDEX == true) {
+	if (config.IGNORE_LAST_VALIDATOR_INDEX == true) {
 		pubkeyIndex = -1
 	}
 

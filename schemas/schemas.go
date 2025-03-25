@@ -7,7 +7,7 @@ type Config struct {
 	OUTPUT_LOCATION            string `json:"OUTPUT_LOCATION"`
 	PASSWORD                   string `json:"PASSWORD"`
 	IPFS_GATEWAY               string `json:"IPFS_GATEWAY"`
-	USE_LAST_VALIDATOR_INDEX   bool `json:"USE_LAST_VALIDATOR_INDEX"`
+	IGNORE_LAST_VALIDATOR_INDEX   bool `json:"IGNORE_LAST_VALIDATOR_INDEX"`
 }
 
 type ValidatorKeyInfo struct {
