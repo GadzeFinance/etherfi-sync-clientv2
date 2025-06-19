@@ -1,13 +1,14 @@
 package schemas
 
 type Config struct {
+	RPC_URL                    string `json:"RPC_URL"`
 	GRAPH_URL                  string `json:"GRAPH_URL"`
 	BIDDER                     string `json:"BIDDER"`
 	PRIVATE_KEYS_FILE_LOCATION string `json:"PRIVATE_KEYS_FILE_LOCATION"`
 	OUTPUT_LOCATION            string `json:"OUTPUT_LOCATION"`
 	PASSWORD                   string `json:"PASSWORD"`
 	IPFS_GATEWAY               string `json:"IPFS_GATEWAY"`
-	USE_LAST_VALIDATOR_INDEX   bool `json:"USE_LAST_VALIDATOR_INDEX"`
+	USE_LAST_VALIDATOR_INDEX   bool   `json:"USE_LAST_VALIDATOR_INDEX"`
 }
 
 type ValidatorKeyInfo struct {
@@ -75,15 +76,15 @@ type ProposerEntry struct {
 }
 
 type TableBid struct {
-	Id string
-	Pubkey string
-	Password string
+	Id          string
+	Pubkey      string
+	Password    string
 	NodeAddress string
-	SyncStatus string
-	Keystore string
+	SyncStatus  string
+	Keystore    string
 }
 
 type DisplayBid struct {
-	Id string
+	Id     string
 	Pubkey string
 }
