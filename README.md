@@ -37,6 +37,7 @@ touch config.json
 ```
 ```json
 {
+	"RPC_URL": (ethereum mainnet rpc url),
 	"GRAPH_URL": (ask it to ether.fi team),
 	"IPFS_GATEWAY": (ask it to ether.fi team),
 	"BIDDER": (your node operator wallet),
