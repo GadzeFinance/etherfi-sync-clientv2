@@ -61,13 +61,13 @@ func fetchValidatorKeys(cfg schemas.Config, db *sql.DB) error {
 	auctionManager, _ := NewAuctionManager(auctionManagerAddr, rpcClient)
 	etherFiNodesManager, _ := NewEtherFiNodesManager(etherFiNodesManagerAddr, rpcClient)
 
-	operatorKey, err := utils.ParseKeystoreFile(cfg.PRIVATE_KEYS_FILE_LOCATION)
+	operatorKeystore, err := utils.ParseKeystoreFile(cfg.PRIVATE_KEYS_FILE_LOCATION)
 	if err != nil {
 		return fmt.Errorf("parsing keystore: %w", err)
 	}
 	// For compatibility, if the authTag is empty, we know it's CBC mode
 	isUsingCBC := false
-	if operatorKey.AuthTag == "" {
+	if operatorKeystore.AuthTag == "" {
 		isUsingCBC = true
 	}
 
@@ -112,18 +112,18 @@ func fetchValidatorKeys(cfg schemas.Config, db *sql.DB) error {
 			}
 		}
 
-		var validatorKey schemas.DecryptedDataJSON
+		var operatorEncryptionKeys schemas.DecryptedDataJSON
 		if isUsingCBC {
-			validatorKey, err = utils.DecryptPrivateKeysCBC(operatorKey, cfg.PASSWORD)
+			operatorEncryptionKeys, err = utils.DecryptPrivateKeysCBC(operatorKeystore, cfg.PASSWORD)
 		} else {
-			validatorKey, err = utils.DecryptPrivateKeysGCM(operatorKey, cfg.PASSWORD)
+			operatorEncryptionKeys, err = utils.DecryptPrivateKeysGCM(operatorKeystore, cfg.PASSWORD)
 		}
 		if err != nil {
 			return fmt.Errorf("DecryptPrivateKeys: %w", err)
 		}
 
-		pubKeyArray := validatorKey.PublicKeys
-		privKeyArray := validatorKey.PrivateKeys
+		pubKeyArray := operatorEncryptionKeys.PublicKeys
+		privKeyArray := operatorEncryptionKeys.PrivateKeys
 		keypairForIndex, err := utils.GetKeyPairByPubKeyIndex(int64(bid.BidderPubKeyIndex), privKeyArray, pubKeyArray)
 		if err != nil {
 			return fmt.Errorf("GetKeyPairByPubKeyIndex: %w", err)
