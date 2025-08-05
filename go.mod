@@ -4,10 +4,7 @@ go 1.20
 
 require golang.org/x/crypto v0.9.0
 
-require (
-	github.com/davecgh/go-spew v1.1.1
-	github.com/glebarez/go-sqlite v1.21.1
-)
+require github.com/glebarez/go-sqlite v1.21.1
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
