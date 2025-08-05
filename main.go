@@ -78,7 +78,7 @@ func fetchValidatorKeys(cfg schemas.Config, db *sql.DB) error {
 	for registrationEvents.Next() {
 		event := registrationEvents.Event
 
-		// the original authors did not add a primay key or any sort of key to database :(
+		// the original authors did not add a primary key or any sort of key to database :(
 		// so we check if there are any number of entries tied to this validator id
 		count, err := utils.GetIDCount(db, event.ValidatorId.String())
 		if err != nil {

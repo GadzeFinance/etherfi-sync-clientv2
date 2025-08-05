@@ -2,7 +2,6 @@ package schemas
 
 type Config struct {
 	RPC_URL                    string `json:"RPC_URL"`
-	GRAPH_URL                  string `json:"GRAPH_URL"`
 	BIDDER                     string `json:"BIDDER"`
 	PRIVATE_KEYS_FILE_LOCATION string `json:"PRIVATE_KEYS_FILE_LOCATION"`
 	OUTPUT_LOCATION            string `json:"OUTPUT_LOCATION"`

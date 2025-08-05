@@ -1,5 +1,5 @@
 {
-	"GRAPH_URL": "https://gateway-arbitrum.network.thegraph.com/api/73b09012e7e6301b5e0e20b45fd66b48/deployments/id/QmYXL6XeXyGC2DCnoQ45ApG68pi8irCZdRdtFx69FetRDd",
+	"RPC_URL": "{RPC_URL}",
 	"IPFS_GATEWAY": "https://ether-fi-mainnet.infura-ipfs.io/ipfs",
 	"BIDDER": "",
 	"OUTPUT_LOCATION": "./output",

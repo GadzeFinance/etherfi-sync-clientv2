@@ -50,6 +50,7 @@ func DecryptValidatorKeyInfo(file *schemas.IPFSResponseType, keypairForIndex sch
 
 	// Get the NO's private key
 	nodeOperatorPrivKey := fromString(privateKey)
+
 	// It seems that we need to mod this value to get the private key fit in to the curve library functions
 	beMod, _ := big.NewInt(0).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
 	nodeOperatorPrivKey.Mod(nodeOperatorPrivKey, beMod)
