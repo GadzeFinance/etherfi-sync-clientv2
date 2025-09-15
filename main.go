@@ -48,9 +48,9 @@ func run() error {
 func fetchValidatorKeys(cfg schemas.Config, db *sql.DB) error {
 
 	var (
-		stakingManagerAddr      = common.HexToAddress("0x25e821b7197B146F7713C3b89B6A4D83516B912d")
-		auctionManagerAddr      = common.HexToAddress("0x00C452aFFee3a17d9Cecc1Bcd2B8d5C7635C4CB9")
-		etherFiNodesManagerAddr = common.HexToAddress("0x8B71140AD2e5d1E7018d2a7f8a288BD3CD38916F")
+		stakingManagerAddr      = common.HexToAddress("0xDbE50E32Ed95f539F36bA315a75377FBc35aBc12")
+		auctionManagerAddr      = common.HexToAddress("0x261315c176864cE29D582f38DdA4930ED17CD95A")
+		etherFiNodesManagerAddr = common.HexToAddress("0x7579194b8265e3Aa7df451c6BD2aff5B1FC5F945")
 		operator                = common.HexToAddress(cfg.BIDDER)
 	)
 	rpcClient, err := ethclient.Dial(cfg.RPC_URL)
