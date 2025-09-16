@@ -8,6 +8,7 @@ type Config struct {
 	PASSWORD                   string `json:"PASSWORD"`
 	IPFS_GATEWAY               string `json:"IPFS_GATEWAY"`
 	USE_LAST_VALIDATOR_INDEX   bool   `json:"USE_LAST_VALIDATOR_INDEX"`
+	NETWORK                    string `json:"NETWORK"`
 }
 
 type ValidatorKeyInfo struct {
