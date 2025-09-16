@@ -51,8 +51,8 @@ func fetchValidatorKeys(cfg schemas.Config, db *sql.DB) error {
 		auctionManagerAddr      common.Address
 		etherFiNodesManagerAddr common.Address
 	)
-	if cfg.NETWORK == "" && (cfg.NETWORK != "hoodi" && cfg.NETWORK != "mainnet") {
-		return fmt.Errorf("NETWORK is required in config and must be either 'hoodi' or 'mainnet'")
+	if cfg.NETWORK != "hoodi" && cfg.NETWORK != "mainnet" {
+		return fmt.Errorf("NETWORK must be either 'hoodi' or 'mainnet'")
 	}
 	if cfg.NETWORK == "mainnet" {
 		stakingManagerAddr = common.HexToAddress("0x25e821b7197B146F7713C3b89B6A4D83516B912d")
