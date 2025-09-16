@@ -46,13 +46,28 @@ func run() error {
 }
 
 func fetchValidatorKeys(cfg schemas.Config, db *sql.DB) error {
-
 	var (
-		stakingManagerAddr      = common.HexToAddress("0x25e821b7197B146F7713C3b89B6A4D83516B912d")
-		auctionManagerAddr      = common.HexToAddress("0x00C452aFFee3a17d9Cecc1Bcd2B8d5C7635C4CB9")
-		etherFiNodesManagerAddr = common.HexToAddress("0x8B71140AD2e5d1E7018d2a7f8a288BD3CD38916F")
-		operator                = common.HexToAddress(cfg.BIDDER)
+		stakingManagerAddr      common.Address
+		auctionManagerAddr      common.Address
+		etherFiNodesManagerAddr common.Address
 	)
+	if cfg.NETWORK != "hoodi" && cfg.NETWORK != "mainnet" {
+		return fmt.Errorf("NETWORK must be either 'hoodi' or 'mainnet'")
+	}
+	if cfg.NETWORK == "mainnet" {
+		stakingManagerAddr = common.HexToAddress("0x25e821b7197B146F7713C3b89B6A4D83516B912d")
+		auctionManagerAddr = common.HexToAddress("0x00C452aFFee3a17d9Cecc1Bcd2B8d5C7635C4CB9")
+		etherFiNodesManagerAddr = common.HexToAddress("0x8B71140AD2e5d1E7018d2a7f8a288BD3CD38916F")
+	} else if cfg.NETWORK == "hoodi" {
+		stakingManagerAddr = common.HexToAddress("0xDbE50E32Ed95f539F36bA315a75377FBc35aBc12")
+		auctionManagerAddr = common.HexToAddress("0x261315c176864cE29D582f38DdA4930ED17CD95A")
+		etherFiNodesManagerAddr = common.HexToAddress("0x7579194b8265e3Aa7df451c6BD2aff5B1FC5F945")
+	}
+	fmt.Println("Network: ", cfg.NETWORK)
+	fmt.Println("Staking Manager Address: ", stakingManagerAddr)
+	fmt.Println("Auction Manager Address: ", auctionManagerAddr)
+	fmt.Println("EtherFi Nodes Manager Address: ", etherFiNodesManagerAddr)
+	operator := common.HexToAddress(cfg.BIDDER)
 	rpcClient, err := ethclient.Dial(cfg.RPC_URL)
 	if err != nil {
 		return fmt.Errorf("failed to dial RPC: %w", err)
