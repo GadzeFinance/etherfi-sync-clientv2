@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"strconv"
 	"strings"
 
 	"github.com/GadzeFinance/etherfi-sync-clientv2/schemas"
@@ -51,6 +50,7 @@ func DecryptValidatorKeyInfo(file *schemas.IPFSResponseType, keypairForIndex sch
 
 	// Get the NO's private key
 	nodeOperatorPrivKey := fromString(privateKey)
+
 	// It seems that we need to mod this value to get the private key fit in to the curve library functions
 	beMod, _ := big.NewInt(0).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
 	nodeOperatorPrivKey.Mod(nodeOperatorPrivKey, beMod)
@@ -233,14 +233,10 @@ func DecryptPrivateKeysCBC(privateKeys *schemas.KeyStoreFile, privKeyPassword st
 	return decryptedDataJSON, nil
 }
 
-func GetKeyPairByPubKeyIndex(pubkeyIndexString string, privateKeys []string, publicKeys []string) (schemas.KeyPair, error) {
-	index, err := strconv.ParseInt(pubkeyIndexString, 10, 0)
-	if err != nil {
-		return schemas.KeyPair{}, err
-	}
+func GetKeyPairByPubKeyIndex(pubkeyIndex int64, privateKeys []string, publicKeys []string) (schemas.KeyPair, error) {
 	return schemas.KeyPair{
-		PrivateKey: privateKeys[index],
-		PublicKey:  publicKeys[index],
+		PrivateKey: privateKeys[pubkeyIndex],
+		PublicKey:  publicKeys[pubkeyIndex],
 	}, nil
 }
 

@@ -37,7 +37,7 @@ touch config.json
 ```
 ```json
 {
-	"GRAPH_URL": (ask it to ether.fi team),
+	"RPC_URL": (ethereum mainnet rpc url),
 	"IPFS_GATEWAY": (ask it to ether.fi team),
 	"BIDDER": (your node operator wallet),
 	"OUTPUT_LOCATION": (the path you want to download the keys to),
